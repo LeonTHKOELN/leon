@@ -25,10 +25,11 @@ PLAN_PAGES = [  # Reihenfolge der Planungsschritte (Stepper und Weiter/Zurück)
 ]
 
 JOB_DEFAULTS = {
-    "w_einsatz": "Hangpflege Silbertal",
-    "w_start_name": "Landeplatz Tal",
-    "w_start_lat": 47.0800, "w_start_lon": 9.9170, "w_start_alt": 920,
-    "w_ziel_lat": 47.0890, "w_ziel_lon": 9.9330, "w_ziel_alt": 1340,
+    # Beispiel: Landeplatz im Ort Silbertal, Einsatz am Hang Richtung Kristberg (Montafon)
+    "w_einsatz": "Hangpflege Kristberg",
+    "w_start_name": "Landeplatz Silbertal",
+    "w_start_lat": 47.0937, "w_start_lon": 9.9831, "w_start_alt": 886,
+    "w_ziel_lat": 47.1000, "w_ziel_lon": 9.9833, "w_ziel_alt": 1167,
     "w_alt_manual": False, "w_start_paste": "", "w_ziel_paste": "",
     "w_dauer": 8, "w_team": 2, "w_tage": 1, "w_rueck": True,
     "w_anbieter": "", "w_heli_basis": "",
@@ -123,15 +124,15 @@ def anreise_optionen(p, landeplatz, max_routing=3):
         r, quelle = None, ""
         if i < max_routing:
             try:
-                r, quelle = _route(tuple(round(x, 6) for x in src), tuple(round(x, 6) for x in landeplatz)), \
-                    "Straßenrouting OSRM"
+                r = _route(tuple(round(x, 6) for x in src), tuple(round(x, 6) for x in landeplatz))
+                quelle = f"Straßenrouting ({r['server']})"
             except Exception:  # noqa: BLE001
                 r = None
         if r is None:
             r = anb.fallback_route(src, landeplatz, p)
             quelle = f"Ersatzrechnung Luftlinie × {de_(p['anreise.umwegfaktor'], 2)}"
         opts.append({"anbieter": a, "km": r["km"], "route_min": r["min"], "geometry": r["geometry"],
-                     "quelle": quelle, "luft_km": a["luft_km"]})
+                     "quelle": quelle, "luft_km": a["luft_km"], "snap_m": r["snap_b_m"]})
     opts.sort(key=lambda o: o["route_min"])
     return opts
 
@@ -143,7 +144,8 @@ def heli_basen(landeplatz):
 
 
 KEIN_ANBIETER = {"anbieter": {"id": "", "name": "Kein Anbieter hinterlegt", "typ": "Drohne"},
-                 "km": 0.0, "route_min": 0.0, "geometry": [], "quelle": "keine Anreise", "luft_km": 0.0}
+                 "km": 0.0, "route_min": 0.0, "geometry": [], "quelle": "keine Anreise", "luft_km": 0.0,
+                 "snap_m": 0.0}
 KEINE_BASIS = {"anbieter": {"id": "", "name": "Keine Heli-Basis hinterlegt", "typ": "Helikopter"}, "km": 0.0}
 
 

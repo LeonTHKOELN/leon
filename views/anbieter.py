@@ -58,8 +58,8 @@ with left:
                         tooltip=f"Landeplatz · {S.w_start_name}").add_to(m)
     m.fit_bounds(bounds, padding=(40, 40))
     st_folium(m, height=420, width="100%", returned_objects=[], key="map_anbieter")
-    st.caption("Orange: Drohnen-Anbieter und Anfahrtsroute · Schwarz: Heli-Basis und Anflug (Luftlinie) · "
-               "Ring: Landeplatz")
+    st.caption("Orange: Drohnen-Anbieter und Anfahrt über die Straße · Schwarz gestrichelt: Heli-Basis und "
+               "Anflug in Luftlinie · Ring: Landeplatz")
 
 with right:
     with st.container(border=True):
@@ -82,7 +82,8 @@ with right:
     st.write("")
     anreise_eur = sum(x["Betrag"] for x in d.get("positionen", []) if x["Gruppe"] == "Anreise")
     kpis([kpi_html("Anreisekosten", de(anreise_eur), "€", "Fahrzeug und Personal, alle Anfahrten", accent=True),
-          kpi_html("Heli-Anflug", de(h.get("anflug_min", 0)), "min", f"je Einsatz · {de(hb['km'], 1)} km Luftlinie")],
+          kpi_html("Heli-Anflug", de(h.get("anflug_min", 0)), "min",
+                   f"hin und zurück · {de(hb['km'], 1)} km Luftlinie, der Heli fliegt direkt")],
          two=True)
 
 st.write("")
@@ -112,6 +113,12 @@ else:
         c2.selectbox("Helikopter-Basis", bids, key="w_heli_basis",
                      format_func=lambda i: next(f"{b['anbieter']['name']} · {de(b['km'], 1)} km"
                                                 for b in basen if b["anbieter"]["id"] == i))
+    if an.get("snap_m", 0) > 100:
+        note(f"Der Landeplatz liegt rund <b>{de(an['snap_m'])} m</b> von der nächsten befahrbaren Straße entfernt. "
+             f"Diese letzte Strecke deckt der Zuschlag letzte Meile ({de(p['anreise.zuschlag_min'])} min) ab.",
+             icon="i")
+    if 0 < an["km"] < 1:
+        note("Anbieter und Landeplatz liegen praktisch am selben Ort, die Anreise fällt kaum ins Gewicht.", icon="i")
     if an["anbieter"].get("fiktiv"):
         note(f"<b>{an['anbieter']['name']}</b> ist ein fiktiver Anbieter für die Konzeptdarstellung.")
     if hb["anbieter"].get("koord_quelle", "").startswith("ungefähr"):

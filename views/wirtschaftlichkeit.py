@@ -19,7 +19,7 @@ if pk["flights"]:
           <div><div class="t">CO₂</div><div class="big">{de(h['CO₂ (kg)'] - d['CO₂ (kg)'])} kg</div>
             <div class="sub">Differenz zum Helikopter</div></div><div class="div"></div>
           <div><div class="t">Gegenüber Tragen</div><div class="big">{de((c['Zeit (min)'] - d['Zeit (min)']) / 60, 1)} h</div>
-            <div class="sub">Zeitdifferenz für {j['team']} Personen</div></div>
+            <div class="sub">weniger Zeit vor Ort als beim Tragen</div></div>
         </div>""", unsafe_allow_html=True)
 st.write("")
 kpis([kpi_html("Drohne", str(d["fluege"]), " Flüge",
@@ -33,7 +33,7 @@ df = pd.DataFrame([{"Variante": "Drohne", **{k: d[k] for k in ("Kosten (€)", "
                    {"Variante": "Helikopter", **{k: h[k] for k in ("Kosten (€)", "Zeit (min)", "CO₂ (kg)")}},
                    {"Variante": "Tragen", **{k: c[k] for k in ("Kosten (€)", "Zeit (min)", "CO₂ (kg)")}}])
 cols = st.columns(3, gap="medium")
-for col, (metric, label, nd) in zip(cols, [("Kosten (€)", "Kosten in €", 0), ("Zeit (min)", "Zeit in Minuten", 0),
+for col, (metric, label, nd) in zip(cols, [("Kosten (€)", "Kosten in €", 0), ("Zeit (min)", "Zeit vor Ort in Minuten", 0),
                                            ("CO₂ (kg)", "CO₂ in kg", 1)]):
     with col, st.container(border=True):
         section_title(label)

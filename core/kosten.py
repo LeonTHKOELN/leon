@@ -2,7 +2,7 @@
 
 Drohne:      Anreise + Aufbau/Abbau + Flugbetrieb (Personal) + ggf. Wartezeit + Drohnenbetrieb + Sonstiges
 Helikopter:  (Anflug von der Basis + Rotationen) × €/min, mindestens Mindestabrechnung, + Bereitstellung
-Tragen:      Gänge × Gehzeit × Team × Stundensatz
+Tragen:      Gänge × Gehzeit (DIN 33466, mit Lastaufschlag) × Team × Stundensatz
 
 Rücktransport am Einsatzende verdoppelt die Transporte. Die Drohne kann dafür vor Ort warten
 oder ein zweites Mal anfahren. Die App rechnet beides und nimmt die günstigere Variante.
@@ -172,12 +172,17 @@ def drohne(prof, pk, p, job, an):
         _pos(pos, "Sonstiges", "Sonstiges", "fix", sonst * tage, "Tage × je Tag", f"{tage} × {de(sonst)} €")
     total = sum(x["Betrag"] for x in pos)
     tr.add("Kosten gesamt", "Σ Positionen", f"{tage} Einsatztag(e) · {variante}", total, "€", 0)
-    co2 = tr.add("CO₂ Flugbetrieb", "Flüge × Transporte × Tage × kWh × Strommix",
+    zeit = tr.add("Zeit vor Ort", "Tage × (Anfahrten × (Aufbau + Abbau) + Flugzeit je Tag)",
+                  f"{tage} × ({anfahrten} × {de(ruest_h * 60)} + {de(flug_min)}) min",
+                  tage * (anfahrten * ruest_h * 60 + flug_min), "min", 0,
+                  kommentar="Ohne Fahrzeit und ohne Wartezeit; vergleichbar mit der Zeit am Hang der anderen Verfahren")
+    co2_flug = n * blocks * tage * p["drohne.energie_kwh_flug"] * p["co2.strom_kg_kwh"]
+    co2_fz = anfahrten * tage * 2 * km * p["co2.fahrzeug_kg_km"]
+    co2 = tr.add("CO₂", "Flugbetrieb (Flüge × Transporte × Tage × kWh × Strommix) + Anfahrt (Anfahrten × Tage × 2 × km × Faktor)",
                  f"{n} × {blocks} × {tage} × {de(p['drohne.energie_kwh_flug'], 1)} kWh × "
-                 f"{de(p['co2.strom_kg_kwh'], 2)} kg/kWh",
-                 n * blocks * tage * p["drohne.energie_kwh_flug"] * p["co2.strom_kg_kwh"], "kg", 1,
-                 kommentar="Anfahrt mit dem Fahrzeug ist noch nicht im CO₂ enthalten")
-    return {"Zeit (min)": flug_min * tage, "Kosten (€)": total, "CO₂ (kg)": co2, "umlauf_min": umlauf,
+                 f"{de(p['co2.strom_kg_kwh'], 2)} kg/kWh + {anfahrten} × {tage} × 2 × {de(km, 1)} km × "
+                 f"{de(p['co2.fahrzeug_kg_km'], 2)} kg/km", co2_flug + co2_fz, "kg", 1)
+    return {"Zeit (min)": zeit, "Kosten (€)": total, "CO₂ (kg)": co2, "umlauf_min": umlauf,
             "fluege": n, "positionen": pos, "variante": variante, "anfahrten": anfahrten, "tage": tage,
             "fix": sum(x["Betrag"] for x in pos if x["Art"] == "fix"),
             "variabel": sum(x["Betrag"] for x in pos if x["Art"] == "variabel"), "trace": tr}
@@ -223,32 +228,51 @@ def heli(pk, p, job, basis):
                  f"{einsaetze} × {de(minuten / 60, 2)} h × {de(p['heli.kerosin_l_h'])} l/h × "
                  f"{de(p['co2.kerosin_kg_l'], 2)} kg/l",
                  einsaetze * minuten / 60 * p["heli.kerosin_l_h"] * p["co2.kerosin_kg_l"], "kg", 1)
-    return {"Zeit (min)": einsaetze * minuten, "Kosten (€)": kosten, "CO₂ (kg)": co2, "rotationen": rot,
+    zeit = tr.add("Zeit vor Ort", "Einsätze × Rotationen × Dauer je Rotation",
+                  f"{einsaetze} × {rot} × {de(p['heli.rotation_min'])} min", einsaetze * rot * p["heli.rotation_min"],
+                  "min", 0, kommentar="Anflug von der Basis ist in den Kosten enthalten, aber keine Zeit am Hang")
+    return {"Zeit (min)": zeit, "Kosten (€)": kosten, "CO₂ (kg)": co2, "rotationen": rot,
             "einsaetze": einsaetze, "anflug_min": anflug, "trace": tr}
 
 
 # ---------------------------------------------------------------------------
 # Tragen
 # ---------------------------------------------------------------------------
+def _din33466(km, auf, ab, p):
+    """Gehzeit nach DIN 33466: max(t_horizontal, t_vertikal) + min(t_horizontal, t_vertikal) / 2."""
+    th = km / p["manuell.v_horizontal_kmh"]
+    tv = auf / p["manuell.aufstieg_hm_h"] + ab / p["manuell.abstieg_hm_h"]
+    return max(th, tv) + min(th, tv) / 2, th, tv
+
+
 def manuell(prof, pk, job, p):
     tr = Trace("manuell", "Manueller Transport",
-               "Das Team trägt die Fracht ohne Boxen. Höhenmeter kommen aus dem Geländeprofil "
-               "(bergauf und bergab entlang der Luftlinie).")
+               "Das Team trägt die Fracht ohne Boxen. Gehzeit nach DIN 33466 (Wanderzeitberechnung) mit "
+               "Zeitaufschlag für den Weg mit Last. Strecke und Höhenmeter aus dem Geländeprofil.")
     team, netto = job["team"], pk["netto"]
     tage, rueck = max(1, job["tage"]), bool(job["rueck"])
     gaenge = tr.add("Gänge je Transport", "⌈Nettogewicht / (Team × Traglast)⌉",
                     f"⌈{de(netto, 1)} kg / ({team} × {de(p['manuell.traglast_kg'])} kg)⌉",
                     math.ceil(netto / (team * p["manuell.traglast_kg"])) if netto else 0, "", 0)
     transporte = tage * (2 if rueck else 1)
-    hm = prof["asc"] + prof["desc"]
-    gang_h = tr.add("Zeit je Gang", "(↑ + ↓) / v_Aufstieg + (↑ + ↓) / v_Abstieg",
-                    f"({de(prof['asc'])} + {de(prof['desc'])}) Hm / {de(p['manuell.aufstieg_hm_h'])} Hm/h + "
-                    f"({de(prof['asc'])} + {de(prof['desc'])}) Hm / {de(p['manuell.abstieg_hm_h'])} Hm/h",
-                    hm / p["manuell.aufstieg_hm_h"] + hm / p["manuell.abstieg_hm_h"], "h", 2,
-                    kommentar="Ein Weg mit Last, ein Weg ohne; Gegenanstiege zählen in beide Richtungen")
+    km = prof["dist"] / 1000
+    auf, ab = prof["asc"], prof["desc"]
+    t_last, th, tv = _din33466(km, auf, ab, p)
+    t_leer, _, tv2 = _din33466(km, ab, auf, p)
+    tr.add("Gehzeit Hinweg (mit Last)", "max(t_h, t_v) + min(t_h, t_v) / 2 · t_h = km / v · t_v = ↑/v_auf + ↓/v_ab",
+           f"t_h = {de(km, 2)} km / {de(p['manuell.v_horizontal_kmh'], 1)} km/h = {de(th, 2)} h · "
+           f"t_v = {de(auf)}/{de(p['manuell.aufstieg_hm_h'])} + {de(ab)}/{de(p['manuell.abstieg_hm_h'])} = {de(tv, 2)} h",
+           t_last, "h", 2, kommentar="Landeplatz → Einsatzort, Zeit ohne Lastaufschlag")
+    tr.add("Gehzeit Rückweg (ohne Last)", "wie Hinweg, Höhenmeter vertauscht",
+           f"t_v = {de(ab)}/{de(p['manuell.aufstieg_hm_h'])} + {de(auf)}/{de(p['manuell.abstieg_hm_h'])} = {de(tv2, 2)} h",
+           t_leer, "h", 2)
+    gang_h = tr.add("Zeit je Gang", "Weg mit Last × Lastfaktor + Weg ohne Last",
+                    f"{de(t_last, 2)} h × {de(p['manuell.lastfaktor'], 2)} + {de(t_leer, 2)} h",
+                    t_last * p["manuell.lastfaktor"] + t_leer, "h", 2,
+                    kommentar="Bergauf getragen; beim Rücktransport ist die Last bergab, gleicher Ansatz")
     zeit_h = tr.add("Zeit gesamt", "Transporte × Gänge × Zeit je Gang",
                     f"{transporte} × {gaenge} × {de(gang_h, 2)} h", transporte * gaenge * gang_h, "h", 1,
-                    kommentar="Transporte = Tage × (2 bei Rücktransport)")
+                    kommentar="Transporte = Tage × (2 bei Rücktransport); alle Personen gehen gleichzeitig")
     kosten = tr.add("Kosten", "Zeit × Team × Stundensatz",
                     f"{de(zeit_h, 2)} h × {team} × {de(p['manuell.stundensatz_eur_h'])} €/h",
                     zeit_h * team * p["manuell.stundensatz_eur_h"], "€", 0)

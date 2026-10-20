@@ -621,24 +621,43 @@ gruppen:
         step: 1
         status: Annahme
         quelle: Planungswert für steiles Gelände, ergonomisch prüfen
+      - key: manuell.v_horizontal_kmh
+        label: Gehgeschwindigkeit horizontal
+        einheit: km/h
+        wert: 4
+        min: 1
+        max: 8
+        step: 0.5
+        status: Literaturwert
+        quelle: DIN 33466 Wanderzeitberechnung (4 km/h)
       - key: manuell.aufstieg_hm_h
-        label: Aufstieg mit Last
+        label: Aufstieg
         einheit: Hm/h
         wert: 300
         min: 50
         max: 1000
         step: 10
-        status: Annahme
-        quelle: Planungswert, Felddaten Montafon einarbeiten
+        status: Literaturwert
+        quelle: DIN 33466 Wanderzeitberechnung (300 Hm/h)
       - key: manuell.abstieg_hm_h
         label: Abstieg
         einheit: Hm/h
-        wert: 600
+        wert: 500
         min: 50
         max: 2000
         step: 10
+        status: Literaturwert
+        quelle: DIN 33466 Wanderzeitberechnung (500 Hm/h)
+      - key: manuell.lastfaktor
+        label: Zeitaufschlag beim Tragen mit Last
+        einheit: ×
+        wert: 1.3
+        min: 1
+        max: 3
+        step: 0.05
         status: Annahme
-        quelle: Planungswert
+        quelle: DIN-Werte gelten ohne schwere Last; Aufschlag mit Felddaten Montafon validieren
+        kommentar: Gilt nur für den Weg mit Last
       - key: manuell.stundensatz_eur_h
         label: Stundensatz Arbeitskraft
         einheit: €/h
@@ -662,6 +681,15 @@ gruppen:
         step: 0.01
         status: Annahme
         quelle: Niedriger Faktor für österreichischen Strommix, Quelle ergänzen
+      - key: co2.fahrzeug_kg_km
+        label: Anfahrt Fahrzeug
+        einheit: kg CO₂/km
+        wert: 0.25
+        min: 0
+        max: 1.5
+        step: 0.01
+        status: Annahme
+        quelle: Größenordnung Transporter mit Dieselmotor, Quelle ergänzen
       - key: co2.kerosin_kg_l
         label: Kerosin
         einheit: kg CO₂/l

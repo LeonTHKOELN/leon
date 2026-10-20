@@ -2,7 +2,7 @@
 
 Datenquelle: data/anbieter.csv. Leere Preisfelder bedeuten: Standardwert aus parameter.yaml verwenden.
 Koordinaten: lat/lon, sonst Adresssuche (OpenStreetMap Nominatim), sonst lat_ca/lon_ca (ungefähr).
-Routing: OSRM-Demoserver (OpenStreetMap-Straßennetz). Fallback: Luftlinie × Umwegfaktor.
+Routing: OSRM-Server (OpenStreetMap-Straßennetz), zweiter Server als Reserve. Sonst Luftlinie × Umwegfaktor.
 """
 import csv
 from pathlib import Path
@@ -62,18 +62,35 @@ def geocode(adresse: str):
     return float(js[0]["lat"]), float(js[0]["lon"])
 
 
+ROUTING_SERVER = [  # (Name, Basis-URL). Beide nutzen OSRM auf OpenStreetMap-Daten
+    ("OSRM", "https://router.project-osrm.org/route/v1/driving"),
+    ("OSRM FOSSGIS", "https://routing.openstreetmap.de/routed-car/route/v1/driving"),
+]
+
+
 def route(a, b):
-    """Straßenroute a → b (je (lat, lon)). Rückgabe km, min, Geometrie [(lat, lon), …]."""
-    url = (f"https://router.project-osrm.org/route/v1/driving/"
-           f"{a[1]:.6f},{a[0]:.6f};{b[1]:.6f},{b[0]:.6f}")
-    r = requests.get(url, params={"overview": "simplified", "geometries": "geojson"}, headers=UA, timeout=15)
-    r.raise_for_status()
-    js = r.json()
-    if js.get("code") != "Ok" or not js.get("routes"):
-        raise ValueError(js.get("message", "keine Route gefunden"))
-    rt = js["routes"][0]
-    return {"km": rt["distance"] / 1000, "min": rt["duration"] / 60,
-            "geometry": [(c[1], c[0]) for c in rt["geometry"]["coordinates"]]}
+    """Straßenroute a → b (je (lat, lon)).
+
+    Rückgabe: km, min, Geometrie [(lat, lon), …], Server sowie die Abstände von a und b zur nächsten
+    befahrbaren Straße (snap_a_m, snap_b_m). Ein großer snap_b_m heißt: der Landeplatz liegt abseits
+    der Straße, die letzte Strecke ist im Routing nicht enthalten.
+    """
+    errors = []
+    for name, base in ROUTING_SERVER:
+        try:
+            r = requests.get(f"{base}/{a[1]:.6f},{a[0]:.6f};{b[1]:.6f},{b[0]:.6f}",
+                             params={"overview": "full", "geometries": "geojson"}, headers=UA, timeout=15)
+            r.raise_for_status()
+            js = r.json()
+            if js.get("code") != "Ok" or not js.get("routes"):
+                raise ValueError(js.get("message", "keine Route gefunden"))
+            rt, wp = js["routes"][0], js.get("waypoints") or [{}, {}]
+            return {"km": rt["distance"] / 1000, "min": rt["duration"] / 60, "server": name,
+                    "geometry": [(c[1], c[0]) for c in rt["geometry"]["coordinates"]],
+                    "snap_a_m": float(wp[0].get("distance") or 0), "snap_b_m": float(wp[-1].get("distance") or 0)}
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"{name}: {e}")
+    raise RuntimeError(" | ".join(errors))
 
 
 def luftlinie_km(a, b):
@@ -82,4 +99,5 @@ def luftlinie_km(a, b):
 
 def fallback_route(a, b, p):
     km = luftlinie_km(a, b) * p["anreise.umwegfaktor"]
-    return {"km": km, "min": km / p["anreise.v_kmh"] * 60, "geometry": [a, b]}
+    return {"km": km, "min": km / p["anreise.v_kmh"] * 60, "geometry": [a, b], "server": "",
+            "snap_a_m": 0.0, "snap_b_m": 0.0}

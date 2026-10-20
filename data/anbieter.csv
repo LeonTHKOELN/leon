@@ -1,3 +1,3 @@
 id,name,typ,adresse,lat,lon,lat_ca,lon_ca,fiktiv,pauschale_eur,eur_km,fahrt_eur_h,einsatz_eur_h,heli_eur_min,heli_mindest_min,heli_bereitstellung_eur,kommentar
 stihl_montafon,STIHL Drohnenservice Montafon,Drohne,"Schruns, Österreich",47.0795,9.9190,,,ja,,,,,,,,Fiktiver Dienstleister für die Konzeptdarstellung
-wucher_ludesch,Wucher Helicopter GmbH,Helikopter,"Hans-Wucher-Platz 1, 6713 Ludesch, Österreich",,,47.1955,9.7785,nein,,,,,,,,Adresse real. Preise nicht vom Anbieter bestätigt
+wucher_ludesch,Wucher Helicopter GmbH,Helikopter,"Hans-Wucher-Platz 1, 6713 Ludesch, Österreich",,,47.2000,9.7831,nein,,,,,,,,Adresse real. Preise nicht vom Anbieter bestätigt

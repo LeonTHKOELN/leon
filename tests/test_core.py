@@ -168,3 +168,20 @@ def test_anbieter_csv_loads():
     tmp = pathlib.Path(tempfile.mkdtemp()) / "a.csv"
     tmp.write_text(anbieter.to_csv(liste), encoding="utf-8")
     assert [a["id"] for a in anbieter.load(tmp)] == [a["id"] for a in liste]
+
+
+def test_din33466_flat_and_steep():
+    from core.kosten import _din33466
+    p = registry.defaults(REG)
+    t, th, tv = _din33466(4.0, 0, 0, p)          # 4 km eben bei 4 km/h → 1 h
+    assert t == pytest.approx(1.0)
+    t, th, tv = _din33466(1.0, 600, 0, p)        # 600 Hm → 2 h vertikal, 0,25 h horizontal → 2,125 h
+    assert t == pytest.approx(2.0 + 0.25 / 2)
+
+
+def test_drone_co2_includes_vehicle():
+    p = registry.defaults(REG)
+    a = run(p=p)["drohne"]["CO₂ (kg)"]
+    p["co2.fahrzeug_kg_km"] = 0
+    b = run(p=p)["drohne"]["CO₂ (kg)"]
+    assert a - b == pytest.approx(2 * ANREISE["km"] * 0.25)

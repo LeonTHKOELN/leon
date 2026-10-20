@@ -131,7 +131,7 @@ def test_autonomous_has_no_pilot_but_supervision():
     p.update({"modell.dienstleister": False, "modell.autonom": True})
     tr = run(p=p)["drohne"]["trace"]
     titel = [s.titel for s in tr.steps]
-    assert "Fernüberwachung" in titel
+    assert any("Fernüberwachung" in t for t in titel)
     assert any("kein Pilot" in s.formel for s in tr.steps)
 
 
@@ -139,9 +139,9 @@ def test_rueck_chooses_cheaper_variant():
     p = registry.defaults(REG)
     job = {**JOB, "rueck": True}
     d = run(p=p, job=job)["drohne"]
-    steps = {s.titel: s for s in d["trace"].steps}
-    assert d["variante"] in ("bleibt vor Ort", "zweite Anfahrt")
-    assert "Variante A: bleibt vor Ort" in steps and "Variante B: zweite Anfahrt" in steps
+    titel = [s.titel for s in d["trace"].steps]
+    assert "bleibt vor Ort" in d["variante"] or "zweite Anfahrt" in d["variante"]
+    assert any("Variante bleibt vor Ort" in t for t in titel) and any("Variante zweite Anfahrt" in t for t in titel)
 
 
 def test_days_scale_costs():
@@ -185,3 +185,79 @@ def test_drone_co2_includes_vehicle():
     p["co2.fahrzeug_kg_km"] = 0
     b = run(p=p)["drohne"]["CO₂ (kg)"]
     assert a - b == pytest.approx(2 * ANREISE["km"] * 0.25)
+
+
+# ---------------------------------------------------------------------------
+# Heuernte
+# ---------------------------------------------------------------------------
+from core import heu  # noqa: E402
+
+WIESE = [(47.10045, 9.98264), (47.10050, 9.98390), (47.09958, 9.98400), (47.09950, 9.98270)]
+
+
+def test_wiese_flaeche_rechteck():
+    # 100 m × 100 m Quadrat → 1 ha
+    lat0, lon0 = 47.1, 9.98
+    dlat = 100 / 111_195
+    dlon = 100 / (111_195 * math.cos(math.radians(lat0)))
+    g = heu.wiese_geometrie([(lat0, lon0), (lat0, lon0 + dlon), (lat0 + dlat, lon0 + dlon), (lat0 + dlat, lon0)])
+    assert g["flaeche_m2"] == pytest.approx(10_000, rel=0.01)
+
+
+def test_neigung_ebene():
+    # Ebene mit 50 % Steigung in y-Richtung
+    xy = [(x, y) for x in range(0, 100, 10) for y in range(0, 100, 10)]
+    z = [0.5 * y for _, y in xy]
+    pct, grad = heu.neigung(xy, z)
+    assert pct == pytest.approx(50) and grad == pytest.approx(math.degrees(math.atan(0.5)))
+
+
+def test_raster_liegt_in_wiese():
+    pts, xy, abstand = heu.raster_in_wiese(WIESE)
+    assert 3 <= len(pts) <= 200
+
+
+def _heu_run(p=None, job=None):
+    p = p or registry.defaults(REG)
+    job = {**JOB, "usecase": "Heuernte", **(job or {})}
+    g = heu.wiese_geometrie(WIESE)
+    g.update({"neigung_pct": 40, "neigung_grad": 21.8, "h_min": 1100, "h_max": 1180, "hoehen_quelle": "Test"})
+    dist, pts, ds, step = geo.sample_route(job["start"], g["schwerpunkt"], p["profil.raster_m"])
+    prof = profil.build_profile(job["start"], g["schwerpunkt"], dist, pts, ds, step,
+                                profil.linear_terrain(ds, 900, 1150), "Test", True, "", p)
+    return modell.berechne(job, p, prof, GERAETE, ANREISE, BASIS, wiese=g), p
+
+
+def test_heu_flights_match_document_example():
+    # Projektdokument: 1 ha, 2.000 kg/ha, 70 kg je Flug → 29 Lastflüge
+    p = registry.defaults(REG)
+    p.update({"heu.ertrag_kg_ha": 2000, "sack.volumen_m3": 1.0, "heu.dichte_kg_m3": 70})
+    r, _ = _heu_run(p)
+    H = r["heu"]
+    assert H["je_sack"] == pytest.approx(70)
+    assert H["fluege"] == math.ceil(H["heu_kg"] / 70)
+
+
+def test_heu_payload_limit():
+    p = registry.defaults(REG)
+    p.update({"sack.volumen_m3": 3.0, "heu.dichte_kg_m3": 70})  # 210 kg Volumen > Nutzlast
+    r, _ = _heu_run(p)
+    assert r["heu"]["je_sack"] == pytest.approx(p["drohne.nutzlast_kg"] - p["sack.leergewicht_kg"])
+
+
+def test_heu_parallel_needs_enough_sacks():
+    p = registry.defaults(REG)
+    p["sack.anzahl"] = 1
+    seriell = _heu_run(p)[0]["heu"]
+    p["sack.anzahl"] = 6
+    parallel = _heu_run(p)[0]["heu"]
+    assert not seriell["parallel"] and parallel["parallel"]
+    assert seriell["ernte_h"] > parallel["ernte_h"]
+
+
+def test_heu_cost_structure():
+    r, p = _heu_run()
+    tage = {x["Einsatztag"] for x in r["drohne"]["positionen"]}
+    assert tage == {"Mähtag", "Erntetag"}
+    assert r["heli"]["Kosten (€)"] > 0 and r["manuell"]["Kosten (€)"] > 0
+    assert any("Heu ins Tal" == s.titel for s in r["manuell"]["trace"].steps)

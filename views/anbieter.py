@@ -77,8 +77,7 @@ with right:
     kpis([kpi_html("Anreise", de(an["km"], 1), "km", "einfache Strecke"),
           kpi_html("Fahrzeit", de(an["route_min"] + p["anreise.zuschlag_min"]), "min",
                    f"inkl. {de(p['anreise.zuschlag_min'])} min letzte Meile"),
-          kpi_html("Anfahrten", str(d.get("anfahrten", 0) * d.get("tage", 1)), "",
-                   d.get("variante", ""))])
+          kpi_html("Anfahrten", str(d.get("anfahrten", 0)), "", f"{d.get('tage', 0)} Einsatztag(e)")])
     st.write("")
     anreise_eur = sum(x["Betrag"] for x in d.get("positionen", []) if x["Gruppe"] == "Anreise")
     kpis([kpi_html("Anreisekosten", de(anreise_eur), "€", "Fahrzeug und Personal, alle Anfahrten", accent=True),

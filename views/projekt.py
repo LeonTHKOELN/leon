@@ -1,9 +1,11 @@
 """Schritt 1 · Projekt & Route: Karte, Pins, Höhenprofil."""
 import folium
 import streamlit as st
+from folium.plugins import Draw
 from streamlit_folium import st_folium
 
 from core.fmt import de
+from core.modell import USE_CASES
 from ui import charts, state
 from ui.components import footer, kpi_html, kpis, nav, note, page_head, section_title
 from ui.theme import GREY_400, GREY_600, GREY_900, INK, ORANGE, ORANGE_LIGHT
@@ -13,17 +15,30 @@ S = state.S
 R = state.result()
 P, p = R["P"], R["p"]
 
-page_head(PATH, "Neuer Auftrag", "Einsatzort, Landeplatz und Team festlegen.")
+page_head(PATH, "Neuer Auftrag", "Use Case, Einsatzort, Landeplatz und Team festlegen.")
+HEU = S.w_usecase == "Heuernte"
+uc1, uc2 = st.columns([2, 5], vertical_alignment="center")
+with uc1:
+    st.segmented_control("Use Case", USE_CASES, key="w_usecase", label_visibility="collapsed")
+uc2.markdown(f"<div style='color:{GREY_600};font-size:.88rem'>"
+             + ("<b>Heuernte:</b> Wiese auf der Karte einzeichnen. Mähen, Trocknen und Heu ins Tal fliegen."
+                if HEU else "<b>Forst:</b> Geräte und Material zum Arbeitsplatz am Hang und zurück.")
+             + "</div>", unsafe_allow_html=True)
+st.write("")
 left, right = st.columns([7, 5], gap="large")
 
 with left:
+    modi = ["Landeplatz", "Wiese zeichnen"] if HEU else ["Landeplatz", "Einsatzort"]
+    if S.get("pin_mode") not in modi:
+        S.pin_mode = "Landeplatz"
     cm1, cm2 = st.columns([3, 2], vertical_alignment="center")
     with cm1:
-        st.segmented_control("Pin setzen", ["Landeplatz", "Einsatzort"], key="pin_mode",
-                             label_visibility="collapsed")
+        st.segmented_control("Pin setzen", modi, key="pin_mode", label_visibility="collapsed")
     mode = S.pin_mode or "Landeplatz"
-    cm2.markdown(f"<div style='color:{GREY_600};font-size:.85rem;text-align:right;white-space:nowrap'>"
-                 f"Kartenklick setzt: <b style='color:{ORANGE}'>{mode}</b></div>", unsafe_allow_html=True)
+    hinweis = ("Mit dem Fünfeck-Werkzeug links die Wiese umfahren" if mode == "Wiese zeichnen"
+               else f"Kartenklick setzt: <b style='color:{ORANGE}'>{mode}</b>")
+    cm2.markdown(f"<div style='color:{GREY_600};font-size:.85rem;text-align:right'>{hinweis}</div>",
+                 unsafe_allow_html=True)
 
     start, ziel = R["job"]["start"], R["job"]["ziel"]
     m = folium.Map(location=[(start[0] + ziel[0]) / 2, (start[1] + ziel[1]) / 2],
@@ -31,6 +46,16 @@ with left:
     folium.TileLayer(tiles="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
                      attr='Karte: © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA), '
                           '© OpenStreetMap-Mitwirkende', name="Topo", max_zoom=17).add_to(m)
+    W = R.get("wiese")
+    if W:
+        folium.Polygon(W["punkte"], color=ORANGE, weight=2, fill=True, fill_color=ORANGE, fill_opacity=.18,
+                       tooltip=f"Wiese · {de(W['flaeche_m2'] / 10_000, 2)} ha · {de(W['neigung_pct'])} %").add_to(m)
+    if HEU and mode == "Wiese zeichnen":
+        Draw(export=False, position="topleft",
+             draw_options={"polyline": False, "rectangle": False, "circle": False, "marker": False,
+                           "circlemarker": False,
+                           "polygon": {"allowIntersection": False, "shapeOptions": {"color": ORANGE}}},
+             edit_options={"edit": False, "remove": False}).add_to(m)
     folium.PolyLine([start, ziel], color=ORANGE, weight=5, opacity=.95, dash_array="10 8").add_to(m)
     if P["real"] and not P["top_is_end"]:
         folium.CircleMarker(P["top_pt"], radius=6, color=INK, weight=2, fill=True, fill_color="#FFFFFF",
@@ -46,14 +71,25 @@ with left:
                  f'<span style="font-family:Barlow,sans-serif;font-size:12px;font-weight:600;background:#fff;'
                  f'border-radius:4px;padding:3px 8px;display:inline-block;box-shadow:0 1px 4px rgba(0,0,0,.25);'
                  f'white-space:nowrap">{label} · {alt_m} m</span></div>')).add_to(m)
-    m.fit_bounds([start, ziel], padding=(70, 70))
-    out = st_folium(m, height=430, width="100%", returned_objects=["last_clicked"], key="map")
-    click = (out or {}).get("last_clicked")
+    m.fit_bounds([start, ziel] + (list(W["punkte"]) if W else []), padding=(70, 70))
+    out = st_folium(m, height=430, width="100%", returned_objects=["last_clicked", "all_drawings"],
+                    key="map") or {}
+    click = out.get("last_clicked")
     if click:
         sig = (round(click["lat"], 6), round(click["lng"], 6))
         if sig != S.get("last_click_sig"):
-            S["last_click_sig"] = sig
-            S["pending_pin"] = (mode, sig[0], sig[1])  # wird in state.init() vor dem Rendern übernommen
+            S["last_click_sig"] = sig  # jeden Klick merken, auch beim Zeichnen, damit er später nicht nachwirkt
+            if mode != "Wiese zeichnen":
+                S["pending_pin"] = (mode, sig[0], sig[1])  # wird in state.init() vor dem Rendern übernommen
+                st.rerun()
+    polys = [f for f in (out.get("all_drawings") or []) if (f.get("geometry") or {}).get("type") == "Polygon"]
+    if polys:
+        ring = polys[-1]["geometry"]["coordinates"][0]
+        poly = [[round(c[1], 6), round(c[0], 6)] for c in ring[:-1]]
+        sig = tuple(map(tuple, poly))
+        if sig != S.get("last_poly_sig"):
+            S["last_poly_sig"] = sig
+            S["pending_wiese"] = poly
             st.rerun()
 
 with right:
@@ -68,6 +104,14 @@ with right:
         c3.number_input("Einsatztage", 1, 30, key="w_tage", help="Je Einsatztag eine Anreise")
         st.toggle("Rücktransport am Einsatzende", key="w_rueck",
                   help="Geräte und Material am Abend wieder ins Tal bringen")
+    if W:
+        st.write("")
+        kpis([kpi_html("Fläche", de(W["flaeche_m2"] / 10_000, 2), "ha", f"{len(W['punkte'])} Eckpunkte", accent=True),
+              kpi_html("Hangneigung", de(W["neigung_pct"]), "%", f"{de(W['neigung_grad'])}° im Mittel"),
+              kpi_html("Höhenunterschied", de(W["h_max"] - W["h_min"]), "m",
+                       f"{de(W['h_min'])} bis {de(W['h_max'])} m")])
+        if S.get("wiese_msg"):
+            note(S.pop("wiese_msg"), warn=True, icon="!")
     st.write("")
     st.markdown(
         f"""<div class="lp-card"><div class="lp-card-title">Route</div><div class="lp-route">
@@ -142,12 +186,17 @@ with st.expander("Koordinaten und Höhen bearbeiten"):
             if S.get(f"paste_err_{prefix}"):
                 st.caption(":orange[Format nicht erkannt. Beispiel: 47.0800, 9.9170]")
             a1, a2 = st.columns(2)
-            a1.number_input("Breitengrad", -90.0, 90.0, format="%.6f", step=0.001, key=f"w_{prefix}_lat")
-            a2.number_input("Längengrad", -180.0, 180.0, format="%.6f", step=0.001, key=f"w_{prefix}_lon")
+            a1.number_input("Breitengrad", -90.0, 90.0, format="%.6f", step=0.001, key=f"w_{prefix}_lat",
+                            disabled=HEU and prefix == "ziel")
+            a2.number_input("Längengrad", -180.0, 180.0, format="%.6f", step=0.001, key=f"w_{prefix}_lon",
+                            disabled=HEU and prefix == "ziel")
             st.number_input("Höhe (m ü. NN)", 0, 9000, step=10, key=f"w_{prefix}_alt", disabled=not S.w_alt_manual,
                             help="Wird automatisch aus dem Höhenmodell ermittelt. Zum Ändern "
                                  "'Höhen manuell festlegen' aktivieren.")
     st.checkbox("Höhen manuell festlegen (ohne Höhen-API)", key="w_alt_manual")
-    st.caption(f"Höhenquelle: {P['source']}")
+    st.caption(f"Höhenquelle: {P['source']}"
+               + (" · Einsatzort = Mitte der Wiese, wird beim Zeichnen gesetzt" if HEU else ""))
+    if W:
+        st.caption(f"Hangneigung: {W['hoehen_quelle']}")
 nav(PATH)
 footer()

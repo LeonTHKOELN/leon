@@ -8,10 +8,14 @@ from ui.components import dg_note, footer, kpi_html, kpis, nav, note, page_head,
 
 PATH = "views/wirtschaftlichkeit.py"
 R = state.result()
-d, h, c, pk, j = R["drohne"], R["heli"], R["manuell"], R["pack"], R["job"]
+d, h, c, j = R["drohne"], R["heli"], R["manuell"], R["job"]
 
 page_head(PATH, "Wirtschaftlichkeit", "Drohne im Vergleich zu Helikopter und Tragen für diesen Einsatz.")
-if pk["flights"]:
+if R["usecase"] == "Heuernte":
+    note("Verglichen werden die <b>Transportkosten</b>. Mähen, Zusammenblasen und Befüllen sind bei allen Verfahren "
+         "gleich und nicht enthalten. Beim Helikopter trägt das Team die Geräte, der Heli fliegt nur das Heu.")
+    st.write("")
+if d["fluege"]:
     st.markdown(
         f"""<div class="lp-hero">
           <div><div class="t">Gegenüber Helikopter</div><div class="big">{de(h['Kosten (€)'] - d['Kosten (€)'])} €</div>
@@ -46,11 +50,13 @@ with st.container(border=True):
             "Eigenbetrieb autonom" if R["p"]["modell.autonom"] else "Eigenbetrieb")
         kpis([kpi_html("Fixe Kosten", de(d["fix"]), "€", "Anreise, Aufbau/Abbau, Wartezeit, Tagessätze"),
               kpi_html("Variable Kosten", de(d["variabel"]), "€", "abhängig von Flugzeit und Flügen"),
-              kpi_html("Modell", modell, "", f"{d['tage']} Tag(e) · {d['variante']}")])
+              kpi_html("Modell", modell, "", f"{d['tage']} Einsatztag(e) · {d['anfahrten']} Anfahrt(en)")])
+        st.caption(d["variante"])
         st.write("")
         pos = pd.DataFrame(d["positionen"])
         pos["Betrag €"] = pos["Betrag"].round(0)
-        st.dataframe(pos[["Position", "Gruppe", "Art", "Eingesetzt", "Betrag €"]], hide_index=True, width="stretch")
+        st.dataframe(pos[["Einsatztag", "Position", "Gruppe", "Art", "Eingesetzt", "Betrag €"]], hide_index=True,
+                     width="stretch")
         st.caption(f"Anbieter: {R['anreise']['anbieter']['name']} · Anreise {de(R['anreise']['km'], 1)} km · "
                    f"Heli-Basis: {R['heli_basis']['anbieter']['name']} · {h['einsaetze']} Heli-Einsatz/Einsätze")
     else:
@@ -60,7 +66,7 @@ st.write("")
 note("Alle Werte beruhen auf Annahmen. Wie jede Zahl entsteht, zeigt der Rechenweg unter "
      "<b>Annahmen & Parameter</b>. Dort lassen sich alle Werte ändern und als Szenario speichern.")
 st.page_link("views/parameter.py", label="Zu Annahmen & Parameter", icon=":material/tune:")
-if pk["has_dg"]:
+if R["has_dg"]:
     st.write("")
     dg_note()
 nav(PATH)

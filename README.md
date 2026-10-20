@@ -3,6 +3,11 @@
 Konzeptprototyp aus dem Projekt **TH Köln × STIHL · Arbeiten in Steillagen**.
 Plant Materialtransporte mit Lastendrohnen in Steillagen und vergleicht sie mit Helikopter und Tragen.
 
+**Use Cases**
+- **Forst:** Geräte, Betriebsstoffe und Material zum Arbeitsplatz am Hang, optional abends zurück.
+- **Heuernte:** Wiese auf der Karte einzeichnen (Fläche und Hangneigung aus dem Höhenmodell), Mähtag,
+  Trocknung, Erntetag mit Heusammelsack und Heuflügen ins Tal.
+
 ## Aufbau
 
 ```
@@ -18,8 +23,9 @@ core/                   Rechenkern ohne Oberfläche (testbar)
   hoehe.py              Höhen-API (EU-DEM, Fallback Copernicus)
   profil.py             Flughöhe, Flugweg, Flugzeit
   packen.py             Boxen und Flugeinteilung
-  kosten.py             Drohne, Helikopter, Tragen
-  modell.py             Gesamtrechnung
+  heu.py                Wiese (Fläche, Neigung), Heumenge, Heusammelsack, Ablauf über die Tage
+  kosten.py             Drohne (je Einsatztag), Helikopter, Tragen (DIN 33466)
+  modell.py             Gesamtrechnung je Use Case
   trace.py              Rechenweg-Protokoll
 ui/                     Theme, Bausteine, Diagramme, Sitzungszustand
 views/                  eine Datei je Seite

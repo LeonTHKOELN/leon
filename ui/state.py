@@ -10,7 +10,7 @@ import re
 import streamlit as st
 
 from core import anbieter as anb
-from core import geo, hoehe, modell, profil
+from core import geo, heu, hoehe, modell, profil
 from core import params as registry
 from core.fmt import de as de_
 
@@ -20,6 +20,7 @@ PLAN_PAGES = [  # Reihenfolge der Planungsschritte (Stepper und Weiter/Zurück)
     ("views/projekt.py", "Projekt & Route"),
     ("views/anbieter.py", "Anbieter & Anreise"),
     ("views/equipment.py", "Equipment"),
+    ("views/arbeitsplanung.py", "Arbeitsplanung"),
     ("views/flugplan.py", "Flugplan"),
     ("views/wirtschaftlichkeit.py", "Wirtschaftlichkeit"),
 ]
@@ -33,8 +34,12 @@ JOB_DEFAULTS = {
     "w_alt_manual": False, "w_start_paste": "", "w_ziel_paste": "",
     "w_dauer": 8, "w_team": 2, "w_tage": 1, "w_rueck": True,
     "w_anbieter": "", "w_heli_basis": "",
+    "w_usecase": "Forst",
+    # Beispielwiese (ca. 1 ha) am Hang Richtung Kristberg, Eckpunkte (lat, lon)
+    "w_wiese": [[47.10045, 9.98264], [47.10050, 9.98390], [47.09958, 9.98400], [47.09950, 9.98270]],
     "w_energie": "Akku-Lösung", "w_akkus": 6, "w_liter": 5.0,
     "w_q_ms": 1, "w_q_fs": 1, "w_q_eb": 1, "w_q_ht": 0, "w_q_sw": 0, "w_q_zb": 1, "w_q_wz": 0, "w_q_wv": 1,
+    "w_q_lb": 0,
 }
 EXPORT_JOB_KEYS = [k for k in JOB_DEFAULTS if not k.endswith("_paste")]
 
@@ -81,6 +86,14 @@ def init():
         pre = "start" if mode == "Landeplatz" else "ziel"
         S[f"w_{pre}_lat"], S[f"w_{pre}_lon"] = lat, lon
         S["pin_mode"] = "Einsatzort" if mode == "Landeplatz" else "Landeplatz"
+    if "pending_wiese" in S:  # gezeichnete Wiese übernehmen, Einsatzort = Mitte der Wiese
+        poly = S.pop("pending_wiese")
+        try:
+            g = heu.wiese_geometrie([tuple(x) for x in poly])
+            S.w_wiese = [list(x) for x in poly]
+            S.w_ziel_lat, S.w_ziel_lon = round(g["schwerpunkt"][0], 6), round(g["schwerpunkt"][1], 6)
+        except ValueError as e:
+            S.wiese_msg = str(e)
 
 
 @st.cache_data
@@ -172,6 +185,7 @@ def job() -> dict:
     return {
         "einsatz": S.w_einsatz, "start_name": S.w_start_name,
         "start": (S.w_start_lat, S.w_start_lon), "ziel": (S.w_ziel_lat, S.w_ziel_lon),
+        "usecase": S.w_usecase,
         "team": int(S.w_team), "dauer_h": int(S.w_dauer), "tage": int(S.w_tage), "rueck": bool(S.w_rueck),
         "anzahl": {g: int(S.get(f"w_q_{g}", 0)) for g in GERAETE},
         "energie": S.w_energie, "akkus": int(S.w_akkus), "liter": float(S.w_liter),
@@ -181,6 +195,23 @@ def job() -> dict:
 @st.cache_data(ttl=7 * 24 * 3600, show_spinner="Höhendaten werden geladen …")
 def _elevations(coords: tuple):
     return hoehe.fetch_elevations(list(coords))
+
+
+def wiese_auswerten():
+    """Fläche, Schwerpunkt und Hangneigung der gezeichneten Wiese (Höhenraster über die Höhen-API)."""
+    poly = [tuple(x) for x in S.w_wiese]
+    g = heu.wiese_geometrie(poly)
+    pts, xy, abstand = heu.raster_in_wiese(poly)
+    try:
+        z, quelle = _elevations(tuple((round(a, 6), round(b, 6)) for a, b in pts))
+        pct, grad = heu.neigung(xy, z)
+        g.update({"neigung_pct": pct, "neigung_grad": grad, "h_min": min(z), "h_max": max(z),
+                  "hoehen_quelle": f"{len(pts)} Rasterpunkte, Abstand {round(abstand)} m · {quelle}"})
+    except Exception:  # noqa: BLE001
+        g.update({"neigung_pct": 0.0, "neigung_grad": 0.0, "h_min": 0.0, "h_max": 0.0,
+                  "hoehen_quelle": "Höhendaten nicht erreichbar, Neigung unbekannt"})
+    g["raster_m"] = abstand
+    return g
 
 
 def build_profile(p, j):
@@ -203,12 +234,16 @@ def build_profile(p, j):
 def result():
     """Komplette Rechnung für den aktuellen Stand. Wird auf jeder Seite vor den Widgets aufgerufen."""
     p, j = params(), job()
+    wiese = wiese_auswerten() if j["usecase"] == "Heuernte" else None
+    if wiese:
+        j["ziel"] = tuple(wiese["schwerpunkt"])  # Heu wird in der Mitte der Wiese gesammelt
     prof = build_profile(p, j)
     opts = anreise_optionen(p, j["start"])
     gew = next((o for o in opts if o["anbieter"]["id"] == S.w_anbieter), opts[0] if opts else KEIN_ANBIETER)
     basen = heli_basen(j["start"])
     hb = next((b for b in basen if b["anbieter"]["id"] == S.w_heli_basis), basen[0] if basen else KEINE_BASIS)
-    r = modell.berechne(j, p, prof, GERAETE, gew, hb, opts)
+    r = modell.berechne(j, p, prof, GERAETE, gew, hb, opts, wiese=wiese)
+    r["wiese"] = wiese
     r["heli_basen"] = basen
     r["job"], r["p"] = j, p
     return r

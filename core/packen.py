@@ -19,12 +19,9 @@ def first_fit(items, cap, key):
     return bins
 
 
-def build_items(job, p, geraete):
-    """Liste aller Einzelteile. geraete: {id: label}, Gewichte kommen aus den Parametern geraet.<id>."""
+def energie_items(job, p):
+    """Akkus und Kraftstoff laut Auswahl im Schritt Equipment (Gefahrgut)."""
     items = []
-    for gid, label in geraete.items():
-        for _ in range(int(job["anzahl"].get(gid, 0))):
-            items.append({"name": label, "kg": p[f"geraet.{gid}"], "dg": False})
     if job["energie"] in ("Akku-Lösung", "Beides"):
         for _ in range(int(job["akkus"])):
             items.append({"name": "Akku", "kg": p["akku.gewicht_kg"], "dg": True})
@@ -32,6 +29,17 @@ def build_items(job, p, geraete):
         kg = job["liter"] * p["kraftstoff.dichte_kg_l"] + p["kanister.leergewicht_kg"]
         items.append({"name": f"Kraftstoff {de(job['liter'], 1)} l", "kg": kg, "dg": True})
     return items
+
+
+def geraete_items(anzahl, p, geraete):
+    """anzahl: {id: Stück}, Gewichte aus den Parametern geraet.<id>."""
+    return [{"name": geraete[g], "kg": p[f"geraet.{g}"], "dg": False}
+            for g, n in anzahl.items() if g in geraete for _ in range(int(n))]
+
+
+def build_items(job, p, geraete):
+    """Liste aller Einzelteile für den Forst-Einsatz."""
+    return geraete_items(job["anzahl"], p, geraete) + energie_items(job, p)
 
 
 def build_units(items, p):
@@ -69,10 +77,13 @@ def build_flights(units, p):
 
 
 def pack(job, p, geraete):
-    tr = Trace("packen", "Packen und Flugeinteilung",
+    return pack_items(build_items(job, p, geraete), p, job, "Packen und Flugeinteilung")
+
+
+def pack_items(items, p, job, titel):
+    tr = Trace("packen", titel,
                "Gegenstände werden in Transporteinheiten gepackt, die Einheiten anschließend auf Flüge verteilt "
                "(First-Fit-Decreasing).")
-    items = build_items(job, p, geraete)
     units = build_units(items, p)
     flights, too_heavy = build_flights(units, p)
     netto = sum(i["kg"] for i in items)
@@ -89,7 +100,7 @@ def pack(job, p, geraete):
            f"Zuladung je Box {de(p['box.zuladung_kg'])} kg", len(units), "Einheiten", 0)
     tr.add("Bruttogewicht", "Netto + Σ Leergewichte der Einheiten",
            f"{de(netto, 1)} kg + {de(brutto - netto, 1)} kg", brutto, "kg", 1)
-    tr.add("Flüge", "Einheiten bis zur Nutzlast je Flug zusammenfassen",
+    tr.add("Flüge je Richtung", "Einheiten bis zur Nutzlast je Flug zusammenfassen",
            f"Nutzlast {de(p['drohne.nutzlast_kg'])} kg · Gefahrgut separat: "
            f"{'ja' if p['flug.gefahrgut_separat'] else 'nein'}", len(flights), "Flüge", 0,
            kommentar=(f"{len(too_heavy)} Einheit(en) zu schwer für die Drohne" if too_heavy else ""))

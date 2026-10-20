@@ -242,6 +242,16 @@ gruppen:
         status: Annahme
         quelle: Wasser und Proviant für ein Team
         kommentar: Wasser, Proviant
+      - key: geraet.lb
+        label: Laubbläser
+        einheit: kg
+        wert: 11
+        min: 0
+        max: 50
+        step: 0.1
+        status: Annahme
+        quelle: Rückentragbares Blasgerät
+        kommentar: Rückengerät, für Heuernte
 
   - id: energie
     titel: Akkus und Betriebsstoffe
@@ -538,6 +548,110 @@ gruppen:
         step: 10
         status: Annahme
         quelle: z. B. Genehmigungsgebühren anteilig
+
+  - id: heu
+    titel: Heuernte
+    beschreibung: Ertrag und Flächenleistungen für den Use Case Heuernte. Werte mit Bergbauern validieren.
+    parameter:
+      - key: heu.ertrag_kg_ha
+        label: Heuertrag
+        einheit: kg/ha
+        wert: 2000
+        min: 100
+        max: 15000
+        step: 100
+        status: Annahme
+        quelle: Beispielwert aus dem Projektdokument, Ertrag in Steillagen erheben
+      - key: heu.trocknung_tage
+        label: Trocknungsdauer
+        einheit: Tage
+        typ: int
+        wert: 1
+        min: 0
+        max: 7
+        step: 1
+        status: Annahme
+        quelle: Wetterabhängig
+      - key: heu.maehleistung_ha_h
+        label: Mähleistung Freischneider je Person
+        einheit: ha/h
+        wert: 0.08
+        min: 0.01
+        max: 1
+        step: 0.01
+        status: Annahme
+        quelle: Schätzung für steile Bergwiese, mit Feldtest validieren
+      - key: heu.blasleistung_ha_h
+        label: Zusammenblasen je Person
+        einheit: ha/h
+        wert: 0.2
+        min: 0.01
+        max: 2
+        step: 0.01
+        status: Annahme
+        quelle: Schätzung, mit Feldtest validieren
+      - key: heu.dichte_kg_m3
+        label: Heudichte im Sack
+        einheit: kg/m³
+        wert: 70
+        min: 10
+        max: 300
+        step: 5
+        status: Annahme
+        quelle: Lose eingeblasenes Heu, durch Versuch mit dem Sack ermitteln
+        kommentar: Bestimmt zusammen mit dem Sackvolumen die Last je Flug
+      - key: manuell.traglast_heu_kg
+        label: Heu je Person und Gang (Tragen)
+        einheit: kg
+        wert: 30
+        min: 5
+        max: 80
+        step: 1
+        status: Annahme
+        quelle: Heutuch oder Netz auf dem Rücken, mit Bergbauern validieren
+
+  - id: sack
+    titel: Heusammelsack
+    beschreibung: Neues Produktkonzept. Aufspannbarer Sack zum Einblasen, Verschließen und Fliegen.
+    parameter:
+      - key: sack.volumen_m3
+        label: Nutzbares Volumen
+        einheit: m³
+        wert: 1.0
+        min: 0.1
+        max: 10
+        step: 0.1
+        status: Annahme
+        quelle: Konzept, Prototyp ausstehend
+      - key: sack.leergewicht_kg
+        label: Leergewicht inkl. Gestell
+        einheit: kg
+        wert: 6
+        min: 0
+        max: 50
+        step: 0.5
+        status: Annahme
+        quelle: Konzept, Prototyp ausstehend
+      - key: sack.anzahl
+        label: Säcke im Umlauf
+        einheit: Stück
+        typ: int
+        wert: 6
+        min: 1
+        max: 50
+        step: 1
+        status: Annahme
+        quelle: Beispielwert aus dem Projektdokument
+        kommentar: Ab zwei Flugladungen arbeiten Team und Drohne parallel
+      - key: sack.befuellzeit_min
+        label: Befüllen und Verschließen je Sack
+        einheit: min
+        wert: 8
+        min: 1
+        max: 60
+        step: 1
+        status: Annahme
+        quelle: Schätzung, Luftströmung und Verdichtung im Versuch klären
 
   - id: heli
     titel: Helikopter

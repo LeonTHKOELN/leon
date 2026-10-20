@@ -275,28 +275,231 @@ gruppen:
         status: Annahme
         quelle: Kombikanister, leer
 
-  - id: kosten_drohne
-    titel: Kosten Drohne
-    beschreibung: Vereinfachtes Dienstleistermodell. Wird in Phase 2 durch die vollständige Kostenrechnung ersetzt.
+  - id: modell
+    titel: Betriebsmodell
+    beschreibung: Wer die Drohne betreibt und wie abgerechnet wird. Steuert, welche Kostengruppen gelten.
     parameter:
-      - key: drohne.pauschale_eur
-        label: Einsatzpauschale Dienstleister
-        einheit: €
-        wert: 250
-        min: 0
-        max: 10000
-        step: 10
+      - key: modell.dienstleister
+        label: Abrechnung über Dienstleister
+        einheit: ja/nein
+        typ: bool
+        wert: true
         status: Annahme
-        quelle: Platzhalter bis Angebote von Dienstleistern vorliegen
-      - key: drohne.kosten_flug_eur
-        label: Kosten je Flug
+        quelle: Rollenmodell STIHL liefert Box, Partner fliegt
+        kommentar: nein = Eigenbetrieb, alle Kosten werden einzeln kalkuliert
+      - key: modell.autonom
+        label: Autonomer Flugbetrieb (hypothetisch)
+        einheit: ja/nein
+        typ: bool
+        wert: false
+        status: Annahme
+        quelle: Zukunftsszenario, technische und rechtliche Zulässigkeit offen
+        kommentar: Nur im Eigenbetrieb wirksam. Pilot entfällt, Überwachung und Bodenpersonal bleiben
+
+  - id: anreise
+    titel: Anreise
+    beschreibung: Standardwerte für die Anreise. Anbieter können eigene Preise in der Anbieterliste haben.
+    parameter:
+      - key: anreise.pauschale_eur
+        label: Anfahrtspauschale je Anreise
         einheit: €
+        wert: 80
+        min: 0
+        max: 2000
+        step: 5
+        status: Annahme
+        quelle: Platzhalter bis Angebote vorliegen
+      - key: anreise.eur_km
+        label: Fahrzeugkosten je km
+        einheit: €/km
+        wert: 1.20
+        min: 0
+        max: 10
+        step: 0.05
+        status: Annahme
+        quelle: Transporter mit Equipment, Platzhalter
+        kommentar: Gilt für Hin- und Rückweg
+      - key: anreise.zuschlag_min
+        label: Zuschlag letzte Meile je Richtung
+        einheit: min
+        wert: 15
+        min: 0
+        max: 120
+        step: 5
+        status: Annahme
+        quelle: Forststraße oder Feldweg bis zum Landeplatz, im Routing nicht enthalten
+      - key: anreise.umwegfaktor
+        label: Umwegfaktor (nur ohne Routing)
+        einheit: ×
+        wert: 1.4
+        min: 1
+        max: 3
+        step: 0.05
+        status: Annahme
+        quelle: Ersatzrechnung Luftlinie → Straße im Bergland
+      - key: anreise.v_kmh
+        label: Ø Geschwindigkeit (nur ohne Routing)
+        einheit: km/h
+        wert: 50
+        min: 10
+        max: 120
+        step: 5
+        status: Annahme
+        quelle: Ersatzrechnung im Bergland
+
+  - id: personal
+    titel: Personal Drohneneinsatz
+    beschreibung: Crew des Drohneneinsatzes im Eigenbetrieb. Pilot kann auf 0 €/h gesetzt werden.
+    parameter:
+      - key: personal.pilot_eur_h
+        label: Stundensatz Pilot
+        einheit: €/h
+        wert: 35
+        min: 0
+        max: 300
+        step: 1
+        status: Annahme
+        quelle: Beispielwert aus dem Projektdokument
+      - key: personal.helfer_n
+        label: Helfer zusätzlich zum Pilot
+        einheit: Personen
+        typ: int
+        wert: 1
+        min: 0
+        max: 10
+        step: 1
+        status: Annahme
+        quelle: Einweiser am Lastaufnahmepunkt
+      - key: personal.helfer_eur_h
+        label: Stundensatz Helfer
+        einheit: €/h
+        wert: 30
+        min: 0
+        max: 300
+        step: 1
+        status: Annahme
+        quelle: Platzhalter
+
+  - id: einsatz
+    titel: Aufbau und Abbau
+    beschreibung: Zeiten vor Ort je Einsatztag (Drohne entladen, prüfen, Route einrichten, sichern, verladen).
+    parameter:
+      - key: einsatz.aufbau_min
+        label: Aufbau und Inbetriebnahme
+        einheit: min
         wert: 45
+        min: 0
+        max: 300
+        step: 5
+        status: Annahme
+        quelle: Schätzung, mit Dienstleister validieren
+      - key: einsatz.abbau_min
+        label: Abbau
+        einheit: min
+        wert: 30
+        min: 0
+        max: 300
+        step: 5
+        status: Annahme
+        quelle: Schätzung, mit Dienstleister validieren
+
+  - id: dienstleister
+    titel: Dienstleister-Abrechnung
+    beschreibung: Gilt, wenn über einen Dienstleister abgerechnet wird. Anbieter können eigene Sätze haben.
+    parameter:
+      - key: dl.einsatz_eur_h
+        label: Stundensatz Einsatz (Team inkl. Drohne)
+        einheit: €/h
+        wert: 180
+        min: 0
+        max: 2000
+        step: 5
+        status: Annahme
+        quelle: Platzhalter bis Angebote vorliegen
+        kommentar: Pilot ist enthalten, wird nicht zusätzlich berechnet
+      - key: dl.fahrt_eur_h
+        label: Stundensatz Fahrzeit je Person
+        einheit: €/h
+        wert: 35
+        min: 0
+        max: 300
+        step: 1
+        status: Annahme
+        quelle: Platzhalter bis Angebote vorliegen
+      - key: dl.flug_eur
+        label: Zuschlag je Flug
+        einheit: €
+        wert: 0
         min: 0
         max: 1000
         step: 5
         status: Annahme
-        quelle: Platzhalter bis Angebote von Dienstleistern vorliegen
+        quelle: Optional, falls Anbieter je Flug abrechnet
+      - key: dl.betrieb_inkl
+        label: Drohnenbetrieb im Stundensatz enthalten
+        einheit: ja/nein
+        typ: bool
+        wert: true
+        status: Annahme
+        quelle: Üblich bei Komplettangeboten
+        kommentar: nein = Betriebskosten werden zusätzlich berechnet
+      - key: dl.aufbau_abgerechnet
+        label: Aufbau und Abbau als Einsatzzeit abgerechnet
+        einheit: ja/nein
+        typ: bool
+        wert: true
+        status: Annahme
+        quelle: Angebot prüfen
+
+  - id: betrieb
+    titel: Drohnenbetrieb
+    beschreibung: Betriebskosten der Drohne im Eigenbetrieb (oder beim Dienstleister, wenn nicht enthalten).
+    parameter:
+      - key: betrieb.abschreibung_eur_tag
+        label: Abschreibung oder Miete je Einsatztag
+        einheit: €/Tag
+        wert: 150
+        min: 0
+        max: 5000
+        step: 10
+        status: Annahme
+        quelle: Platzhalter, aus Anschaffungspreis und Einsatztagen pro Jahr ableiten
+      - key: betrieb.versicherung_eur_tag
+        label: Versicherung je Einsatztag
+        einheit: €/Tag
+        wert: 20
+        min: 0
+        max: 1000
+        step: 5
+        status: Annahme
+        quelle: Platzhalter
+      - key: betrieb.wartung_eur_fh
+        label: Wartung und Verschleiß je Flugstunde
+        einheit: €/Fh
+        wert: 40
+        min: 0
+        max: 1000
+        step: 5
+        status: Annahme
+        quelle: Platzhalter
+      - key: betrieb.akku_eur_fh
+        label: Akkualterung je Flugstunde
+        einheit: €/Fh
+        wert: 30
+        min: 0
+        max: 1000
+        step: 5
+        status: Annahme
+        quelle: Platzhalter, aus Akkupreis und Ladezyklen ableiten
+      - key: betrieb.strom_eur_kwh
+        label: Strompreis
+        einheit: €/kWh
+        wert: 0.30
+        min: 0
+        max: 2
+        step: 0.01
+        status: Annahme
+        quelle: Platzhalter
       - key: drohne.energie_kwh_flug
         label: Energie je Flug
         einheit: kWh
@@ -306,6 +509,35 @@ gruppen:
         step: 0.1
         status: Annahme
         quelle: Grobe Schätzung, wird in Phase 4 durch Energiemodell ersetzt
+      - key: autonom.ueberwachung_eur_h
+        label: Fernüberwachung je Flugstunde (autonom)
+        einheit: €/Fh
+        wert: 25
+        min: 0
+        max: 500
+        step: 5
+        status: Annahme
+        quelle: Hypothetisch
+      - key: autonom.bodenpersonal_n
+        label: Bodenpersonal (autonom)
+        einheit: Personen
+        typ: int
+        wert: 1
+        min: 0
+        max: 10
+        step: 1
+        status: Annahme
+        quelle: Start- und Landeabwicklung, Sicherheitsaufsicht
+        kommentar: Abrechnung zum Stundensatz Helfer
+      - key: betrieb.sonstiges_eur
+        label: Sonstige Kosten je Einsatztag
+        einheit: €
+        wert: 0
+        min: 0
+        max: 5000
+        step: 10
+        status: Annahme
+        quelle: z. B. Genehmigungsgebühren anteilig
 
   - id: heli
     titel: Helikopter
@@ -329,15 +561,34 @@ gruppen:
         step: 50
         status: Annahme
         quelle: Teamdiskussion, Bandbreite 750 bis 1.200 kg, nicht validiert
-      - key: heli.anflug_min
-        label: An- und Abflug gesamt
-        einheit: min
-        wert: 20
-        min: 0
-        max: 180
-        step: 1
+      - key: heli.v_kmh
+        label: Transfergeschwindigkeit Basis → Einsatzort
+        einheit: km/h
+        wert: 180
+        min: 50
+        max: 300
+        step: 10
         status: Annahme
-        quelle: Platzhalter, wird in Phase 2 aus der Entfernung zur Basis berechnet
+        quelle: Größenordnung einmotoriger Arbeitshubschrauber, Typ offen
+        kommentar: Anflug wird aus der Luftlinie zur Basis berechnet
+      - key: heli.mindest_min
+        label: Mindestabrechnung je Einsatz
+        einheit: min
+        wert: 30
+        min: 0
+        max: 300
+        step: 5
+        status: Annahme
+        quelle: Platzhalter, beim Anbieter erfragen
+      - key: heli.bereitstellung_eur
+        label: Bereitstellung je Einsatz
+        einheit: €
+        wert: 0
+        min: 0
+        max: 5000
+        step: 10
+        status: Annahme
+        quelle: Platzhalter, beim Anbieter erfragen
       - key: heli.rotation_min
         label: Dauer je Rotation
         einheit: min

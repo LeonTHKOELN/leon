@@ -238,10 +238,15 @@ with tab_s:
     keys = sorted({k for s in SZENARIEN for k in (s.get("werte") or {})},
                   key=lambda k: list(REG).index(k))
     if keys:
+        def fmt(k, v):
+            if REG[k].typ == "bool":
+                return "ja" if v else "nein"
+            return de(v, 2).rstrip("0").rstrip(",")
+
         table = pd.DataFrame([{
-            "Parameter": REG[k].label, "Einheit": REG[k].einheit, "Basis": REG[k].wert,
-            **{s["name"]: (s.get("werte") or {}).get(k, REG[k].wert) for s in SZENARIEN if s["id"] != "basis"},
-            "Aktuell": S[f"p.{k}"],
+            "Parameter": REG[k].label, "Einheit": REG[k].einheit, "Basis": fmt(k, REG[k].wert),
+            **{s["name"]: fmt(k, (s.get("werte") or {}).get(k, REG[k].wert)) for s in SZENARIEN if s["id"] != "basis"},
+            "Aktuell": fmt(k, S[f"p.{k}"]),
         } for k in keys])
         st.dataframe(table, hide_index=True, width="stretch")
     for s in SZENARIEN:

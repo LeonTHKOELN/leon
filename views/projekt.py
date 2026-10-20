@@ -60,9 +60,14 @@ with right:
     with st.container(border=True):
         section_title("Einsatz")
         st.text_input("Einsatzname", key="w_einsatz")
-        c1, c2 = st.columns(2)
-        c1.number_input("Einsatzdauer (h)", 1, 24, key="w_dauer")
+        c1, c2, c3 = st.columns(3)
+        c1.number_input("Arbeitszeit am Hang (h)", 1, 24, key="w_dauer",
+                        help="Arbeitszeit des Teams je Tag. Bei Rücktransport wartet die Drohne so lange "
+                             "oder fährt ein zweites Mal an.")
         c2.number_input("Teamgröße", 1, 20, key="w_team")
+        c3.number_input("Einsatztage", 1, 30, key="w_tage", help="Je Einsatztag eine Anreise")
+        st.toggle("Rücktransport am Einsatzende", key="w_rueck",
+                  help="Geräte und Material am Abend wieder ins Tal bringen")
     st.write("")
     st.markdown(
         f"""<div class="lp-card"><div class="lp-card-title">Route</div><div class="lp-route">

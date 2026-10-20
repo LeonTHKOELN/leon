@@ -26,10 +26,12 @@ pages = {
     "Planung": [
         st.Page(path, title=title, icon=icon, default=(i == 0))
         for i, ((path, title), icon) in enumerate(zip(state.PLAN_PAGES, [
-            ":material/map:", ":material/handyman:", ":material/flight_takeoff:", ":material/euro:"]))
+            ":material/map:", ":material/local_shipping:", ":material/handyman:", ":material/flight_takeoff:",
+            ":material/euro:"]))
     ],
     "Einstellungen": [
         st.Page("views/parameter.py", title="Annahmen & Parameter", icon=":material/tune:"),
+        st.Page("views/anbieter_verwalten.py", title="Anbieter", icon=":material/storefront:"),
     ],
 }
 nav = st.navigation(pages)

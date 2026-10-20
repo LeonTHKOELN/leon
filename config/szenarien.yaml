@@ -22,8 +22,8 @@ szenarien:
       drohne.v_reise_ms: 8
       drohne.steigrate_ms: 2.5
       flug.handling_min: 8
-      drohne.pauschale_eur: 350
-      drohne.kosten_flug_eur: 60
+      dl.einsatz_eur_h: 240
+      einsatz.aufbau_min: 60
       heli.eur_min: 25
       heli.nutzlast_kg: 1200
 
@@ -35,7 +35,19 @@ szenarien:
       drohne.v_reise_ms: 12
       drohne.steigrate_ms: 4
       flug.handling_min: 4
-      drohne.pauschale_eur: 180
-      drohne.kosten_flug_eur: 35
+      dl.einsatz_eur_h: 140
+      einsatz.aufbau_min: 30
       heli.eur_min: 35
       heli.nutzlast_kg: 750
+
+  - id: autonom_2035
+    name: 2035 autonom (hypothetisch)
+    beschreibung: Eigenbetrieb ohne Pilot, höhere Nutzlast. Szenarioannahme, keine Prognose
+    werte:
+      modell.dienstleister: false
+      modell.autonom: true
+      drohne.nutzlast_kg: 150
+      drohne.v_reise_ms: 14
+      flug.handling_min: 3
+      einsatz.aufbau_min: 20
+      einsatz.abbau_min: 15

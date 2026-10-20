@@ -10,8 +10,11 @@ app.py                  Einstieg, Navigation
 config/
   parameter.yaml        ALLE Rechenwerte mit Einheit, Bereich, Status, Quelle, Kommentar
   szenarien.yaml        Szenarien = Abweichungen von den Basiswerten
+data/
+  anbieter.csv          Drohnen-Dienstleister und Heli-Basen (leere Preise = Standardwerte)
 core/                   Rechenkern ohne Oberfläche (testbar)
   geo.py                Entfernungen, Stützpunkte
+  anbieter.py           Anbieterliste, Adresssuche (Nominatim), Straßenrouting (OSRM)
   hoehe.py              Höhen-API (EU-DEM, Fallback Copernicus)
   profil.py             Flughöhe, Flugweg, Flugzeit
   packen.py             Boxen und Flugeinteilung
@@ -34,6 +37,13 @@ angezeigte Rechnung immer exakt der Rechnung der App.
 2. Im Rechenkern über `p["dein.key"]` verwenden und mit `trace.add(...)` im Rechenweg ausweisen.
 
 Die Variable erscheint automatisch auf der Seite *Annahmen & Parameter*.
+
+## Anbieter
+
+`data/anbieter.csv` enthält die Anbieter. Pflichtfelder: id, name, typ (Drohne oder Helikopter), adresse.
+Koordinaten optional: fehlen sie, sucht die App die Adresse über OpenStreetMap. Preisfelder optional:
+leer bedeutet Standardwert aus `parameter.yaml`. In der App unter *Einstellungen › Anbieter* lassen sich
+Anbieter für die Sitzung anlegen und als CSV exportieren.
 
 ## Szenarien
 
@@ -60,3 +70,4 @@ validiert gekennzeichnet sind. Die App ersetzt keine Flugplanung und keine behö
 
 Höhendaten: EU-DEM v1.1 über OpenTopoData · Copernicus DEM GLO-90 über Open-Meteo
 (© DLR e.V. 2010–2014 und © Airbus Defence and Space GmbH 2014–2018, bereitgestellt im Rahmen des Copernicus-Programms).
+Adresssuche und Routing: © OpenStreetMap-Mitwirkende, Nominatim, OSRM.

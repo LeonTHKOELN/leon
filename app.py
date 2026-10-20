@@ -172,6 +172,12 @@ for k, v in DEFAULTS.items():
     st.session_state.setdefault(k, v)
 for k in [k for k in st.session_state.keys() if str(k).startswith("w_")]:
     st.session_state[k] = st.session_state[k]
+st.session_state.setdefault("pin_mode", "Landeplatz")
+if "pending_pin" in st.session_state:          # Kartenklick aus dem letzten Lauf übernehmen
+    _mode, _lat, _lon = st.session_state.pop("pending_pin")
+    _pre = "start" if _mode == "Landeplatz" else "ziel"
+    st.session_state[f"w_{_pre}_lat"], st.session_state[f"w_{_pre}_lon"] = _lat, _lon
+    st.session_state["pin_mode"] = "Einsatzort" if _mode == "Landeplatz" else "Landeplatz"
 
 PAGES = ["Auftrag", "Ausrüstung", "Flugplan", "Einsparungen"]
 st.session_state.setdefault("page", "Auftrag")
@@ -366,6 +372,13 @@ def build_profile():
         "path_climb": sum(max(path[i + 1] - path[i], 0) for i in range(len(ds) - 1)),
         "max_slope": max(slopes) if slopes else 0,
         "out_min": out_s / 60, "back_min": back_s / 60,
+        # Strecken aus dem Profil: Flugweg inkl. Steigen/Sinken, Geländelinie und Höhenmeter
+        "flight_len": 2 * clear + sum(math.hypot(ds[i + 1] - ds[i], path[i + 1] - path[i])
+                                      for i in range(len(ds) - 1)),
+        "terrain_len": sum(math.hypot(ds[i + 1] - ds[i], terrain[i + 1] - terrain[i])
+                           for i in range(len(ds) - 1)),
+        "asc": sum(max(terrain[i + 1] - terrain[i], 0) for i in range(len(ds) - 1)),
+        "desc": sum(max(terrain[i] - terrain[i + 1], 0) for i in range(len(ds) - 1)),
     }
 
 
@@ -388,7 +401,8 @@ def compute():
     heli = {"Zeit (min)": heli_min, "Kosten (€)": heli_min * S.w_heli_eur_min,
             "CO₂ (kg)": heli_min / 60 * S.w_heli_lh * 2.52}
     trips = math.ceil(netto / (S.w_team * S.w_carry_kg)) if netto else 0
-    carry_h = trips * (dh / S.w_up + dh / S.w_down)
+    # Tragen: Hinweg mit Last und Rückweg, jeweils mit den Höhenmetern aus dem Geländeprofil
+    carry_h = trips * ((P["asc"] + P["desc"]) / S.w_up + (P["asc"] + P["desc"]) / S.w_down)
     carry = {"Zeit (min)": carry_h * 60, "Kosten (€)": carry_h * S.w_team * S.w_wage, "CO₂ (kg)": 0.0}
     return {"dist_m": dist_m, "dh": dh, "items": items, "units": units, "flights": flights,
             "too_heavy": too_heavy, "flight_min": flight_min, "netto": netto, "brutto": brutto,
@@ -577,6 +591,14 @@ if page == "Auftrag":
     page_head("Auftrag", "Neuer Auftrag", "Einsatzort, Landeplatz und Team festlegen.")
     left, right = st.columns([7, 5], gap="large")
     with left:
+        cm1, cm2 = st.columns([3, 2], vertical_alignment="center")
+        with cm1:
+            st.segmented_control("Pin setzen", ["Landeplatz", "Einsatzort"], key="pin_mode",
+                                 label_visibility="collapsed")
+        mode = S.pin_mode or "Landeplatz"
+        cm2.markdown(f"<div style='color:{GREY_600};font-size:.85rem;text-align:right;white-space:nowrap'>"
+                     f"Kartenklick setzt: <b style='color:{ORANGE}'>{mode}</b></div>",
+                     unsafe_allow_html=True)
         start = (S.w_start_lat, S.w_start_lon)
         ziel = (S.w_ziel_lat, S.w_ziel_lon)
         m = folium.Map(location=[(start[0] + ziel[0]) / 2, (start[1] + ziel[1]) / 2],
@@ -591,18 +613,28 @@ if page == "Auftrag":
         if P["real"] and not P["top_is_end"]:
             folium.CircleMarker(P["top_pt"], radius=6, color=INK, weight=2, fill=True, fill_color="#FFFFFF",
                                 fill_opacity=1, tooltip=f"Höchster Geländepunkt · {de(P['top_alt'])} m").add_to(m)
-        for pos, label, alt_m, fill in [(start, S.w_start_name, de(P["start_alt"]), "#FFFFFF"),
-                                        (ziel, S.w_einsatz, de(P["ziel_alt"]), ORANGE)]:
+        for pos, other, label, alt_m, fill in [
+                (start, ziel, S.w_start_name, de(P["start_alt"]), "#FFFFFF"),
+                (ziel, start, S.w_einsatz, de(P["ziel_alt"]), ORANGE)]:
             folium.CircleMarker(pos, radius=9, color=ORANGE, weight=4, fill=True,
                                 fill_color=fill, fill_opacity=1).add_to(m)
+            right_side = pos[1] <= other[1]          # Label zur Außenseite der Route
             folium.Marker(pos, icon=folium.DivIcon(
-                icon_size=(220, 30), icon_anchor=(-14, 14),
-                html=f'<div style="font-family:Barlow,sans-serif;font-size:12px;font-weight:600;'
+                icon_size=(240, 30), icon_anchor=(-14, 14) if right_side else (254, 14),
+                html=f'<div style="text-align:{"left" if right_side else "right"}">'
+                     f'<span style="font-family:Barlow,sans-serif;font-size:12px;font-weight:600;'
                      f'background:#fff;border-radius:4px;padding:3px 8px;display:inline-block;'
                      f'box-shadow:0 1px 4px rgba(0,0,0,.25);white-space:nowrap">'
-                     f'{label} · {alt_m} m</div>')).add_to(m)
-        m.fit_bounds([start, ziel], padding=(60, 60))
-        st_folium(m, height=470, width="100%", returned_objects=[], key="map")
+                     f'{label} · {alt_m} m</span></div>')).add_to(m)
+        m.fit_bounds([start, ziel], padding=(70, 70))
+        out = st_folium(m, height=430, width="100%", returned_objects=["last_clicked"], key="map")
+        click = (out or {}).get("last_clicked")
+        if click:
+            sig = (round(click["lat"], 6), round(click["lng"], 6))
+            if sig != S.get("last_click_sig"):
+                S["last_click_sig"] = sig
+                S["pending_pin"] = (mode, sig[0], sig[1])
+                st.rerun()
     with right:
         with st.container(border=True):
             section_title("Einsatz")
@@ -615,14 +647,14 @@ if page == "Auftrag":
             f"""<div class="lp-card"><div class="lp-card-title">Route</div>
             <div class="lp-route">
               <div class="pin fill"></div><div class="name">{S.w_einsatz}</div><div class="alt">{de(R['P']['ziel_alt'])} m</div>
-              <div class="seg"></div><div class="mid">Luftlinie {de(R['dist_m'] / 1000, 1)} km ·
-                Steigung {de((R['dh'] / R['dist_m'] * 100) if R['dist_m'] else 0)} %</div><div></div>
+              <div class="seg"></div><div class="mid">Flugweg {de(R['P']['flight_len'] / 1000, 2)} km ·
+                Luftlinie {de(R['dist_m'] / 1000, 2)} km<br>Ø Steigung {de((R['dh'] / R['dist_m'] * 100) if R['dist_m'] else 0)} %</div><div></div>
               <div class="pin"></div><div class="name">{S.w_start_name}</div><div class="alt">{de(R['P']['start_alt'])} m</div>
             </div></div>""",
             unsafe_allow_html=True,
         )
         st.write("")
-        kpis([kpi_html("Strecke", de(R["dist_m"] / 1000, 1), "km"),
+        kpis([kpi_html("Flugweg", de(R["P"]["flight_len"] / 1000, 2), "km", "je Richtung"),
               kpi_html("Höhe", ("+" if R["P"]["dh"] >= 0 else "−") + de(abs(R["P"]["dh"])), "m"),
               kpi_html("Flugzeit", de(R["flight_min"]), "min", "je Umlauf")])
 
@@ -646,6 +678,12 @@ if page == "Auftrag":
         st.altair_chart(profile_chart(P), width="stretch")
     st.write("")
     direct_ok = P["direct_min_agl"] >= S.w_clear - 0.5 and P["direct_max_agl"] <= max(S.w_max_agl, S.w_clear) + 0.5
+    kpis([kpi_html("Luftlinie", de(P["dist"] / 1000, 2), "km", "horizontal, Kartenmaß"),
+          kpi_html("Flugweg", de(P["flight_len"] / 1000, 2), "km",
+                   f"+{de((P['flight_len'] / P['dist'] - 1) * 100 if P['dist'] else 0, 1)} % · inkl. Steigen und Sinken"),
+          kpi_html("Geländelinie", de(P["terrain_len"] / 1000, 2), "km",
+                   f"↑ {de(P['asc'])} m · ↓ {de(P['desc'])} m")])
+    st.write("")
     kpis([kpi_html("Höchster Punkt", de(P["top_alt"]), "m", f"bei {de(P['top_d'] / 1000, 2)} km"),
           kpi_html("Max. Geländeneigung", de(P["max_slope"]), "%", f"je {de(P['step_eff'])}-m-Abschnitt"),
           kpi_html("Flugzeit hin / zurück", f"{de(P['out_min'], 1)} / {de(P['back_min'], 1)}", "min",
@@ -774,7 +812,7 @@ elif page == "Flugplan":
                 f"""<div class="lp-flight"><div class="hd"><div class="no"><span>Flug</span> {n}</div>
                 <div class="kg">{de(f['load'], 1)} kg <small>/ {de(S.w_payload)} kg</small></div></div>
                 <div class="lp-bar"><div style="width:{pct:.0f}%"></div></div>{chips}
-                <div class="lp-meta">≈ {fmt_min(R['flight_min'])} · {de(R['dist_m'] / 1000, 1)} km ·
+                <div class="lp-meta">≈ {fmt_min(R['flight_min'])} · {de(2 * R['P']['flight_len'] / 1000, 2)} km hin und zurück ·
                 +{de(R['dh'])} m{dg}</div></div>""",
                 unsafe_allow_html=True,
             )

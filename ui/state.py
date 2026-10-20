@@ -39,13 +39,18 @@ JOB_DEFAULTS = {
 EXPORT_JOB_KEYS = [k for k in JOB_DEFAULTS if not k.endswith("_paste")]
 
 
+def _stand(*pfade):
+    """Änderungszeitpunkt der Dateien: neuer Stand im Repo → Zwischenspeicher wird neu befüllt."""
+    return tuple(pf.stat().st_mtime_ns for pf in pfade)
+
+
 @st.cache_resource
-def load_config():
+def load_config(_stand_):
     params, gruppen = registry.load_registry()
     return params, gruppen, registry.load_scenarios()
 
 
-REG, GRUPPEN, SZENARIEN = load_config()
+REG, GRUPPEN, SZENARIEN = load_config(_stand(registry.CONFIG / "parameter.yaml", registry.CONFIG / "szenarien.yaml"))
 GERAETE = {k.split(".", 1)[1]: REG[k].label for g in GRUPPEN if g.id == "geraete" for k in g.keys}
 
 
@@ -60,6 +65,8 @@ def init():
     for k, p in REG.items():
         S.setdefault(f"p.{k}", p.wert)
         S.setdefault(f"m.{k}", meta_default(k))
+    for k in [k for k in S.keys() if str(k).startswith(("p.", "m.")) and str(k)[2:] not in REG]:
+        del S[k]  # Parameter, die es im neuen Stand nicht mehr gibt
     S.setdefault("szenario", "Basis")
     S.setdefault("ed_ver", 0)
     S.setdefault("pin_mode", "Landeplatz")
@@ -77,8 +84,12 @@ def init():
 
 
 @st.cache_data
-def load_anbieter():
+def _load_anbieter(_stand_):
     return anb.load()
+
+
+def load_anbieter():
+    return _load_anbieter(_stand(anb.DATA))
 
 
 @st.cache_data(ttl=30 * 24 * 3600, show_spinner="Adresse wird gesucht …")

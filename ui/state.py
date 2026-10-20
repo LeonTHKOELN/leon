@@ -50,13 +50,20 @@ def _stand(*pfade):
 
 
 @st.cache_resource
-def load_config(_stand_):
+def load_config(stand):  # stand wird gehasht: neue Dateien im Repo → neu laden
     params, gruppen = registry.load_registry()
     return params, gruppen, registry.load_scenarios()
 
 
-REG, GRUPPEN, SZENARIEN = load_config(_stand(registry.CONFIG / "parameter.yaml", registry.CONFIG / "szenarien.yaml"))
-GERAETE = {k.split(".", 1)[1]: REG[k].label for g in GRUPPEN if g.id == "geraete" for k in g.keys}
+def refresh_config():
+    """Parameter- und Szenarioliste aktuell halten (wird bei jedem Seitenaufruf in init() aufgerufen)."""
+    global REG, GRUPPEN, SZENARIEN, GERAETE
+    REG, GRUPPEN, SZENARIEN = load_config(_stand(registry.CONFIG / "parameter.yaml",
+                                                 registry.CONFIG / "szenarien.yaml"))
+    GERAETE = {k.split(".", 1)[1]: REG[k].label for g in GRUPPEN if g.id == "geraete" for k in g.keys}
+
+
+refresh_config()
 
 
 def meta_default(k):
@@ -65,6 +72,7 @@ def meta_default(k):
 
 
 def init():
+    refresh_config()
     for k, v in JOB_DEFAULTS.items():
         S.setdefault(k, v)
     for k, p in REG.items():
@@ -97,7 +105,7 @@ def init():
 
 
 @st.cache_data
-def _load_anbieter(_stand_):
+def _load_anbieter(stand):  # stand wird gehasht
     return anb.load()
 
 

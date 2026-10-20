@@ -1,5 +1,0 @@
-streamlit>=1.50
-pandas
-altair>=5
-folium
-streamlit-folium>=0.22

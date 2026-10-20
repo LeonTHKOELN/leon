@@ -1,0 +1,422 @@
+# ---------------------------------------------------------------------------
+# Lift Planner · zentrale Parameter
+#
+# Jede Rechnung der App liest ihre Werte ausschließlich aus dieser Datei
+# (bzw. aus den in der App geänderten Werten). Neue Variable = neuer Eintrag.
+#
+# Felder je Parameter:
+#   key        eindeutiger Name, wird im Code verwendet
+#   label      Anzeigename
+#   einheit    Einheit für Anzeige und Rechenweg
+#   wert       Basiswert
+#   min/max    zulässiger Bereich (Eingaben werden darauf begrenzt)
+#   step       Schrittweite im Eingabefeld
+#   typ        float (Standard), int oder bool
+#   status     Annahme | Literaturwert | Herstellerangabe | Regelwerk | Validiert
+#   quelle     Herkunft des Wertes
+#   kommentar  optionale Erläuterung
+# ---------------------------------------------------------------------------
+
+gruppen:
+
+  - id: drohne
+    titel: Drohne
+    beschreibung: Leistungsdaten der Lastendrohne. Nicht an ein Modell gebunden.
+    parameter:
+      - key: drohne.nutzlast_kg
+        label: Maximale Nutzlast je Flug
+        einheit: kg
+        wert: 80
+        min: 5
+        max: 500
+        step: 5
+        status: Annahme
+        quelle: In Anlehnung an DJI FlyCart 100, Herstellerdaten prüfen
+      - key: drohne.v_reise_ms
+        label: Reisegeschwindigkeit
+        einheit: m/s
+        wert: 10
+        min: 1
+        max: 30
+        step: 0.5
+        status: Annahme
+        quelle: Planungswert mit Außenlast
+      - key: drohne.steigrate_ms
+        label: Steigrate
+        einheit: m/s
+        wert: 3
+        min: 0.5
+        max: 10
+        step: 0.5
+        status: Annahme
+        quelle: Planungswert mit Außenlast
+      - key: drohne.sinkrate_ms
+        label: Sinkrate
+        einheit: m/s
+        wert: 3
+        min: 0.5
+        max: 10
+        step: 0.5
+        status: Annahme
+        quelle: Planungswert mit Außenlast
+
+  - id: flugbetrieb
+    titel: Flugbetrieb
+    beschreibung: Zeiten am Boden und Regeln für die Flugeinteilung.
+    parameter:
+      - key: flug.handling_min
+        label: Be- und Entladen je Flug
+        einheit: min
+        wert: 6
+        min: 0
+        max: 60
+        step: 1
+        status: Annahme
+        quelle: Schätzung Team
+        kommentar: Anhängen, Lösen, Sichtprüfung an Start und Ziel zusammen
+      - key: flug.gefahrgut_separat
+        label: Gefahrgut in eigenen Flügen
+        einheit: ja/nein
+        typ: bool
+        wert: true
+        status: Annahme
+        quelle: Konservative Annahme bis zur Klärung mit der Behörde
+        kommentar: Akkus und Kraftstoff nicht mit anderer Fracht kombinieren
+
+  - id: profil
+    titel: Flugprofil
+    beschreibung: Raster der Höhenabfrage und zulässiger Höhenkorridor über Grund.
+    parameter:
+      - key: profil.raster_m
+        label: Rasterabstand Höhenabfrage
+        einheit: m
+        wert: 30
+        typ: int
+        min: 10
+        max: 500
+        step: 10
+        status: Annahme
+        quelle: Passend zur Auflösung EU-DEM (25 m)
+      - key: profil.min_agl_m
+        label: Mindestabstand über Grund
+        einheit: m
+        wert: 30
+        min: 5
+        max: 150
+        step: 5
+        status: Annahme
+        quelle: Sicherheitsabstand zu Bäumen und Hindernissen, mit Pilot abstimmen
+      - key: profil.max_agl_m
+        label: Maximale Höhe über Grund
+        einheit: m
+        wert: 120
+        min: 20
+        max: 300
+        step: 10
+        status: Regelwerk
+        quelle: VO (EU) 2019/947, Grenze der Open-Kategorie
+        kommentar: In der Specific-Kategorie gilt die Betriebsgenehmigung
+
+  - id: boxen
+    titel: Transportboxen
+    beschreibung: Leergewichte und Zuladung der STIHL-Transportbox und der Alternativen.
+    parameter:
+      - key: box.leergewicht_kg
+        label: Box Leergewicht
+        einheit: kg
+        wert: 4
+        min: 0
+        max: 30
+        step: 0.5
+        status: Annahme
+        quelle: Konzept Transportbox, noch kein Prototyp
+      - key: box.zuladung_kg
+        label: Maximale Zuladung je Box
+        einheit: kg
+        wert: 35
+        min: 5
+        max: 200
+        step: 1
+        status: Annahme
+        quelle: Konzept Transportbox
+      - key: box.gg_leergewicht_kg
+        label: Gefahrgut-Box Leergewicht
+        einheit: kg
+        wert: 6
+        min: 0
+        max: 30
+        step: 0.5
+        status: Annahme
+        quelle: Konzept crashsichere Akku-Box
+      - key: box.netz_leergewicht_kg
+        label: Lastnetz Leergewicht
+        einheit: kg
+        wert: 2
+        min: 0
+        max: 20
+        step: 0.5
+        status: Annahme
+        quelle: Für Teile, die nicht in eine Box passen
+
+  - id: geraete
+    titel: Geräte und Material
+    beschreibung: Transportgewichte je Stück. Die Stückzahl wird im Schritt Equipment gewählt.
+    parameter:
+      - key: geraet.ms
+        label: Motorsäge
+        einheit: kg
+        wert: 6.5
+        min: 0
+        max: 50
+        step: 0.1
+        status: Annahme
+        quelle: Typische Profisäge, Tank leer
+        kommentar: Tank leer
+      - key: geraet.fs
+        label: Freischneider
+        einheit: kg
+        wert: 9
+        min: 0
+        max: 50
+        step: 0.1
+        status: Annahme
+        quelle: Inkl. Schutz und Gurt
+        kommentar: inkl. Schutz
+      - key: geraet.eb
+        label: Erdbohrer
+        einheit: kg
+        wert: 10
+        min: 0
+        max: 50
+        step: 0.1
+        status: Annahme
+        quelle: Inkl. Bohrer
+        kommentar: mit Bohrer
+      - key: geraet.ht
+        label: Hochentaster
+        einheit: kg
+        wert: 7
+        min: 0
+        max: 50
+        step: 0.1
+        status: Annahme
+        quelle: Teleskopausführung
+        kommentar: Teleskop
+      - key: geraet.sw
+        label: Seilwinde
+        einheit: kg
+        wert: 16
+        min: 0
+        max: 80
+        step: 0.1
+        status: Annahme
+        quelle: Tragbare Spillwinde
+        kommentar: tragbar
+      - key: geraet.zb
+        label: Zubehör
+        einheit: kg
+        wert: 9
+        min: 0
+        max: 50
+        step: 0.1
+        status: Annahme
+        quelle: Ketten, Keile, Feilen
+        kommentar: Ketten, Keile, Feilen
+      - key: geraet.wz
+        label: Werkzeugkiste
+        einheit: kg
+        wert: 12
+        min: 0
+        max: 50
+        step: 0.1
+        status: Annahme
+        quelle: Servicewerkzeug
+        kommentar: Service
+      - key: geraet.wv
+        label: Verpflegung
+        einheit: kg
+        wert: 6
+        min: 0
+        max: 50
+        step: 0.1
+        status: Annahme
+        quelle: Wasser und Proviant für ein Team
+        kommentar: Wasser, Proviant
+
+  - id: energie
+    titel: Akkus und Betriebsstoffe
+    beschreibung: Gewichte der mitgeführten Energieträger (Fracht, nicht Antrieb der Drohne).
+    parameter:
+      - key: akku.gewicht_kg
+        label: Gewicht je Geräte-Akku
+        einheit: kg
+        wert: 1.6
+        min: 0.1
+        max: 10
+        step: 0.1
+        status: Annahme
+        quelle: An verwendeten STIHL-Akkutyp anpassen
+      - key: kraftstoff.dichte_kg_l
+        label: Dichte Kraftstoff
+        einheit: kg/l
+        wert: 0.75
+        min: 0.6
+        max: 0.9
+        step: 0.01
+        status: Literaturwert
+        quelle: Ottokraftstoff nach EN 228, ca. 0,72 bis 0,775 kg/l
+      - key: kanister.leergewicht_kg
+        label: Kanister Leergewicht
+        einheit: kg
+        wert: 1.0
+        min: 0
+        max: 5
+        step: 0.1
+        status: Annahme
+        quelle: Kombikanister, leer
+
+  - id: kosten_drohne
+    titel: Kosten Drohne
+    beschreibung: Vereinfachtes Dienstleistermodell. Wird in Phase 2 durch die vollständige Kostenrechnung ersetzt.
+    parameter:
+      - key: drohne.pauschale_eur
+        label: Einsatzpauschale Dienstleister
+        einheit: €
+        wert: 250
+        min: 0
+        max: 10000
+        step: 10
+        status: Annahme
+        quelle: Platzhalter bis Angebote von Dienstleistern vorliegen
+      - key: drohne.kosten_flug_eur
+        label: Kosten je Flug
+        einheit: €
+        wert: 45
+        min: 0
+        max: 1000
+        step: 5
+        status: Annahme
+        quelle: Platzhalter bis Angebote von Dienstleistern vorliegen
+      - key: drohne.energie_kwh_flug
+        label: Energie je Flug
+        einheit: kWh
+        wert: 2.0
+        min: 0
+        max: 50
+        step: 0.1
+        status: Annahme
+        quelle: Grobe Schätzung, wird in Phase 4 durch Energiemodell ersetzt
+
+  - id: heli
+    titel: Helikopter
+    beschreibung: Vergleichsverfahren Außenlastflug mit Helikopter.
+    parameter:
+      - key: heli.eur_min
+        label: Preis je Flugminute
+        einheit: €/min
+        wert: 30
+        min: 0
+        max: 200
+        step: 1
+        status: Annahme
+        quelle: Teamdiskussion, Bandbreite 25 bis 35 €/min, nicht validiert
+      - key: heli.nutzlast_kg
+        label: Nutzlast je Rotation
+        einheit: kg
+        wert: 750
+        min: 100
+        max: 3000
+        step: 50
+        status: Annahme
+        quelle: Teamdiskussion, Bandbreite 750 bis 1.200 kg, nicht validiert
+      - key: heli.anflug_min
+        label: An- und Abflug gesamt
+        einheit: min
+        wert: 20
+        min: 0
+        max: 180
+        step: 1
+        status: Annahme
+        quelle: Platzhalter, wird in Phase 2 aus der Entfernung zur Basis berechnet
+      - key: heli.rotation_min
+        label: Dauer je Rotation
+        einheit: min
+        wert: 6
+        min: 1
+        max: 60
+        step: 1
+        status: Annahme
+        quelle: Schätzung inkl. Ein- und Aushängen
+      - key: heli.kerosin_l_h
+        label: Kerosinverbrauch
+        einheit: l/h
+        wert: 170
+        min: 0
+        max: 1000
+        step: 10
+        status: Annahme
+        quelle: Größenordnung einmotoriger Arbeitshubschrauber, Typ offen
+
+  - id: manuell
+    titel: Manueller Transport
+    beschreibung: Tragen durch das Team als Vergleichsverfahren.
+    parameter:
+      - key: manuell.traglast_kg
+        label: Traglast je Person
+        einheit: kg
+        wert: 20
+        min: 5
+        max: 50
+        step: 1
+        status: Annahme
+        quelle: Planungswert für steiles Gelände, ergonomisch prüfen
+      - key: manuell.aufstieg_hm_h
+        label: Aufstieg mit Last
+        einheit: Hm/h
+        wert: 300
+        min: 50
+        max: 1000
+        step: 10
+        status: Annahme
+        quelle: Planungswert, Felddaten Montafon einarbeiten
+      - key: manuell.abstieg_hm_h
+        label: Abstieg
+        einheit: Hm/h
+        wert: 600
+        min: 50
+        max: 2000
+        step: 10
+        status: Annahme
+        quelle: Planungswert
+      - key: manuell.stundensatz_eur_h
+        label: Stundensatz Arbeitskraft
+        einheit: €/h
+        wert: 35
+        min: 0
+        max: 200
+        step: 1
+        status: Annahme
+        quelle: Platzhalter, regionale Lohnkosten prüfen
+
+  - id: co2
+    titel: CO₂-Faktoren
+    beschreibung: Emissionsfaktoren für den Vergleich.
+    parameter:
+      - key: co2.strom_kg_kwh
+        label: Strommix
+        einheit: kg CO₂/kWh
+        wert: 0.10
+        min: 0
+        max: 1.5
+        step: 0.01
+        status: Annahme
+        quelle: Niedriger Faktor für österreichischen Strommix, Quelle ergänzen
+      - key: co2.kerosin_kg_l
+        label: Kerosin
+        einheit: kg CO₂/l
+        wert: 2.52
+        min: 0
+        max: 5
+        step: 0.01
+        status: Literaturwert
+        quelle: 3,16 kg CO₂ je kg Jet-A1 × Dichte ca. 0,8 kg/l

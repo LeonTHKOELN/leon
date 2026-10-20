@@ -253,7 +253,7 @@ def result():
     r = modell.berechne(j, p, prof, GERAETE, gew, hb, opts, wiese=wiese)
     r["wiese"] = wiese
     r["heli_basen"] = basen
-    r["job"], r["p"] = j, p
+    r["job"], r["p"], r["geraete"] = j, p, GERAETE
     return r
 
 

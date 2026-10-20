@@ -261,3 +261,51 @@ def test_heu_cost_structure():
     assert tage == {"Mähtag", "Erntetag"}
     assert r["heli"]["Kosten (€)"] > 0 and r["manuell"]["Kosten (€)"] > 0
     assert any("Heu ins Tal" == s.titel for s in r["manuell"]["trace"].steps)
+
+
+# ---------------------------------------------------------------------------
+# Analyse
+# ---------------------------------------------------------------------------
+from core import analyse  # noqa: E402
+
+
+def _R(heu_case=False):
+    if heu_case:
+        r, p = _heu_run()
+        r["wiese"] = heu.wiese_geometrie(WIESE)
+        r["wiese"].update({"neigung_pct": 40, "neigung_grad": 21.8, "h_min": 1100, "h_max": 1180,
+                           "hoehen_quelle": "Test"})
+    else:
+        p = registry.defaults(REG)
+        r = run(p=p)
+        r["wiese"] = None
+    r.update({"p": p, "job": {**JOB, "usecase": "Heuernte" if heu_case else "Forst"}, "geraete": GERAETE})
+    return r
+
+
+def test_neu_rechnen_reproduziert_ergebnis():
+    R = _R()
+    assert analyse.kosten(analyse.neu_rechnen(R, R["p"])) == pytest.approx(analyse.kosten(R))
+
+
+def test_sensitivitaet_sortiert_und_plausibel():
+    R = _R()
+    basis, rows = analyse.sensitivitaet(R, REG, "Kosten Drohne")
+    assert rows and all(rows[i]["Spanne"] >= rows[i + 1]["Spanne"] for i in range(len(rows) - 1))
+    sl = next(r for r in rows if r["key"] == "dl.einsatz_eur_h")
+    assert sl["Δ hoch"] > 0 > sl["Δ niedrig"]   # höherer Stundensatz → teurer
+
+
+def test_sweep_flaeche_und_schnittpunkt():
+    R = _R(heu_case=True)
+    rows = analyse.sweep(R, REG, analyse.FLAECHE, [0.5, 1, 2, 4, 8])
+    assert rows[-1]["Tragen"] > rows[0]["Tragen"]          # mehr Fläche → mehr Tragezeit
+    xs = analyse.schnittpunkte([{"x": 0, "A": 0, "B": 10}, {"x": 10, "A": 20, "B": 10}], "A", "B")
+    assert xs[0][0] == pytest.approx(5) and xs[0][1] == "B günstiger"
+
+
+def test_szenarien_laufen():
+    R = _R()
+    out = analyse.szenarien(R, REG, registry.load_scenarios())
+    assert len(out) == len(registry.load_scenarios()) + 1
+    assert all(o["Günstigstes"] in analyse.METHODEN for o in out)

@@ -26,6 +26,7 @@ core/                   Rechenkern ohne Oberfläche (testbar)
   heu.py                Wiese (Fläche, Neigung), Heumenge, Heusammelsack, Ablauf über die Tage
   kosten.py             Drohne (je Einsatztag), Helikopter, Tragen (DIN 33466)
   modell.py             Gesamtrechnung je Use Case
+  analyse.py            Sensitivität (±x %), Break-even (Parameter-Sweeps), Szenariovergleich
   trace.py              Rechenweg-Protokoll
 ui/                     Theme, Bausteine, Diagramme, Sitzungszustand
 views/                  eine Datei je Seite

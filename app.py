@@ -29,6 +29,9 @@ pages = {
             ":material/map:", ":material/local_shipping:", ":material/handyman:", ":material/event_note:",
             ":material/flight_takeoff:", ":material/euro:"]))
     ],
+    "Analyse": [
+        st.Page("views/analyse.py", title="Sensitivität & Break-even", icon=":material/query_stats:"),
+    ],
     "Einstellungen": [
         st.Page("views/parameter.py", title="Annahmen & Parameter", icon=":material/tune:"),
         st.Page("views/anbieter_verwalten.py", title="Anbieter", icon=":material/storefront:"),

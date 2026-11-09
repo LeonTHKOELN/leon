@@ -6,6 +6,8 @@ Böen gibt es nur in 10 m Höhe. Die Ampel ist eine Planungshilfe, die Entscheid
 """
 import requests
 
+# Bei jeder Änderung am Datenformat erhöhen: macht zwischengespeicherte Vorhersagen ungültig
+FORMAT_VERSION = 2
 TAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 WMO = {  # Wettercode → (Symbol, Text)
     0: ("☀️", "klar"), 1: ("🌤️", "überwiegend klar"), 2: ("⛅", "teilweise bewölkt"), 3: ("☁️", "bedeckt"),

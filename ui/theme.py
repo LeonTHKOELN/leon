@@ -24,3 +24,8 @@ _FONTS = ('<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;
 
 def inject():
     st.markdown(f"{_FONTS}<style>{_CSS}</style>", unsafe_allow_html=True)
+    # Seite als Deutsch kennzeichnen, damit der Browser nicht automatisch übersetzt (Streamlit setzt lang="en")
+    import streamlit.components.v1 as components
+    components.html("<script>try{const d=window.parent.document.documentElement;d.lang='de';"
+                    "d.setAttribute('translate','no');d.classList.add('notranslate');}catch(e){}</script>",
+                    height=0)

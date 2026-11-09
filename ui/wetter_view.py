@@ -32,13 +32,15 @@ def _karten(tage, p, markiert):
             f'<div class="m">💨 Böen {_f(t["boe"])} m/s</div>'
             f'<div class="m">↑ Höhe {_f(t["wind_hoehe"])} m/s</div>'
             f'<div class="m">☀ {_f(t["sonne_h"], 1)} h</div></div>')
-    st.markdown(f'<div class="lp-wx">{"".join(karten)}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="lp-wx notranslate" translate="no">{"".join(karten)}</div>', unsafe_allow_html=True)
 
 
 def _stunden(tage, p, vorauswahl):
     """Stundenansicht eines Tages: Wind, Böen, Regen und flugtaugliche Zeitfenster."""
     mit = [t for t in tage if t.get("stunden")]
     if not mit:
+        note("Für diesen Ort liefert die Vorhersage derzeit keine Stundenwerte. Seite in einigen Minuten neu "
+             "laden.", warn=True, icon="!")
         return
     daten = [t["datum"] for t in mit]
     idx = daten.index(vorauswahl) if vorauswahl in daten else 0
@@ -103,7 +105,8 @@ def anzeigen(R):
 
     _karten(tage[:7], p, markiert)
     st.markdown(
-        f"<div class='lp-wx-legend' style='color:{GREY_600};font-size:.8rem;margin-top:6px'>Flug-Ampel:"
+        f"<div class='lp-wx-legend notranslate' translate='no' style='color:{GREY_600};font-size:.8rem;"
+        f"margin-top:6px'>Flug-Ampel:"
         + "".join(f"<span style='background:{c}'></span>{n}" for n, c in FARBE.items())
         + f" · Grenzen: Wind {de(p['wetter.wind_max_ms'])} m/s, Böen {de(p['wetter.boe_max_ms'])} m/s, "
           f"Regen {de(p['wetter.regen_max_mm'], 1)} mm, ab {de(p['wetter.temp_min_c'])} °C · "

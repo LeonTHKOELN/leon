@@ -182,14 +182,14 @@ KEINE_BASIS = {"anbieter": {"id": "", "name": "Keine Heli-Basis hinterlegt", "ty
 
 
 @st.cache_data(ttl=3600, show_spinner="Wettervorhersage wird geladen …")
-def _wetter(lat: float, lon: float, hoehe: int):
+def _wetter(lat: float, lon: float, hoehe: int, version: int):  # version: neues Datenformat → neu laden
     return wetter.fetch(lat, lon, hoehe)
 
 
 def wetter_laden(punkt, hoehe):
     """Vorhersage am Einsatzort (Koordinaten gerundet, damit kleine Verschiebungen den Cache nutzen)."""
     try:
-        tage, _ = _wetter(round(punkt[0], 3), round(punkt[1], 3), int(round(hoehe)))
+        tage, _ = _wetter(round(punkt[0], 3), round(punkt[1], 3), int(round(hoehe)), wetter.FORMAT_VERSION)
         return tage, ""
     except Exception as e:  # noqa: BLE001
         return None, str(e)

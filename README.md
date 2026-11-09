@@ -26,6 +26,7 @@ core/                   Rechenkern ohne Oberfläche (testbar)
   heu.py                Wiese (Fläche, Neigung), Heumenge, Heusammelsack, Ablauf über die Tage
   kosten.py             Drohne (je Einsatztag), Helikopter, Tragen (DIN 33466)
   modell.py             Gesamtrechnung je Use Case
+  wetter.py             Vorhersage (Open-Meteo), Flug-Ampel je Tag, Erntefenster Heuernte
   analyse.py            Sensitivität (±x %), Break-even (Parameter-Sweeps), Szenariovergleich
   trace.py              Rechenweg-Protokoll
 ui/                     Theme, Bausteine, Diagramme, Sitzungszustand
@@ -77,4 +78,4 @@ validiert gekennzeichnet sind. Die App ersetzt keine Flugplanung und keine behö
 
 Höhendaten: EU-DEM v1.1 über OpenTopoData · Copernicus DEM GLO-90 über Open-Meteo
 (© DLR e.V. 2010–2014 und © Airbus Defence and Space GmbH 2014–2018, bereitgestellt im Rahmen des Copernicus-Programms).
-Adresssuche und Routing: © OpenStreetMap-Mitwirkende, Nominatim, OSRM.
+Adresssuche und Routing: © OpenStreetMap-Mitwirkende, Nominatim, OSRM. Wetter: Open-Meteo (CC BY 4.0).

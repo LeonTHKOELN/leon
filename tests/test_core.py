@@ -309,3 +309,38 @@ def test_szenarien_laufen():
     out = analyse.szenarien(R, REG, registry.load_scenarios())
     assert len(out) == len(registry.load_scenarios()) + 1
     assert all(o["Günstigstes"] in analyse.METHODEN for o in out)
+
+
+# ---------------------------------------------------------------------------
+# Wetter
+# ---------------------------------------------------------------------------
+from core import wetter  # noqa: E402
+
+
+def _tag(datum, boe=5, wind=5, regen=0.0, sonne=10, tmin=8, code=1, pct=10):
+    return {"datum": datum, "code": code, "tmax": 20, "tmin": tmin, "regen_mm": regen, "regen_pct": pct,
+            "wind10": wind, "boe": boe, "wind_hoehe": wind, "sonne_h": sonne}
+
+
+def test_flugampel():
+    p = registry.defaults(REG)
+    assert wetter.flugampel(_tag("2026-07-01"), p)[0] == "grün"
+    assert wetter.flugampel(_tag("2026-07-01", boe=p["wetter.boe_max_ms"] + 1), p)[0] == "rot"
+    assert wetter.flugampel(_tag("2026-07-01", boe=p["wetter.boe_max_ms"] * 0.9), p)[0] == "gelb"
+    assert wetter.flugampel(_tag("2026-07-01", code=95), p)[0] == "rot"
+    assert wetter.flugampel(_tag("2026-07-01", tmin=p["wetter.temp_min_c"] - 1), p)[0] == "rot"
+
+
+def test_erntefenster_findet_trockene_folge():
+    p = registry.defaults(REG)
+    tage = [_tag("2026-07-01", regen=5), _tag("2026-07-02"), _tag("2026-07-03", sonne=9),
+            _tag("2026-07-04"), _tag("2026-07-05", boe=30)]
+    f = wetter.erntefenster(tage, p, 1)
+    assert f and f[0]["maehtag"]["datum"] == "2026-07-02" and f[0]["erntetag"]["datum"] == "2026-07-04"
+    assert all(k["erntetag"]["datum"] != "2026-07-05" for k in f)   # Sturm am Erntetag ausgeschlossen
+
+
+def test_erntefenster_leer_bei_regen():
+    p = registry.defaults(REG)
+    tage = [_tag(f"2026-07-0{i}", regen=3) for i in range(1, 6)]
+    assert wetter.erntefenster(tage, p, 1) == []

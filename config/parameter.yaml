@@ -653,6 +653,65 @@ gruppen:
         status: Annahme
         quelle: Schätzung, Luftströmung und Verdichtung im Versuch klären
 
+  - id: wetter
+    titel: Wetter
+    beschreibung: Grenzwerte für die Flug-Ampel und das Erntefenster. Entscheidung vor Ort trifft der Pilot.
+    parameter:
+      - key: wetter.wind_max_ms
+        label: Maximaler Wind in Flughöhe
+        einheit: m/s
+        wert: 10
+        min: 2
+        max: 30
+        step: 0.5
+        status: Annahme
+        quelle: Vorsichtiger Planungswert mit Außenlast, Herstellerangabe der Drohne prüfen
+      - key: wetter.boe_max_ms
+        label: Maximale Böen
+        einheit: m/s
+        wert: 12
+        min: 2
+        max: 35
+        step: 0.5
+        status: Annahme
+        quelle: Vorsichtiger Planungswert, Herstellerangabe prüfen
+      - key: wetter.regen_max_mm
+        label: Maximaler Niederschlag am Flugtag
+        einheit: mm
+        wert: 1.0
+        min: 0
+        max: 20
+        step: 0.5
+        status: Annahme
+        quelle: Schutzklasse der Drohne prüfen
+      - key: wetter.temp_min_c
+        label: Mindesttemperatur
+        einheit: °C
+        wert: -5
+        min: -30
+        max: 15
+        step: 1
+        status: Annahme
+        quelle: Akkuleistung bei Kälte, Herstellerangabe prüfen
+      - key: heu.trocknung_regen_max_mm
+        label: Trocknungstag maximaler Niederschlag
+        einheit: mm
+        wert: 0.5
+        min: 0
+        max: 10
+        step: 0.1
+        status: Annahme
+        quelle: Mit Bergbauern abstimmen
+      - key: heu.trocknung_sonne_min_h
+        label: Trocknungstag Mindestsonnenstunden
+        einheit: h
+        wert: 6
+        min: 0
+        max: 14
+        step: 0.5
+        status: Annahme
+        quelle: Mit Bergbauern abstimmen
+
   - id: heli
     titel: Helikopter
     beschreibung: Vergleichsverfahren Außenlastflug mit Helikopter.

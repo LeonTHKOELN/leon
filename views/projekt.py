@@ -6,7 +6,7 @@ from streamlit_folium import st_folium
 
 from core.fmt import de
 from core.modell import USE_CASES
-from ui import charts, state
+from ui import charts, state, wetter_view
 from ui.components import footer, kpi_html, kpis, nav, note, page_head, section_title
 from ui.theme import GREY_400, GREY_600, GREY_900, INK, ORANGE, ORANGE_LIGHT
 
@@ -124,6 +124,10 @@ with right:
     kpis([kpi_html("Flugweg", de(P["flight_len"] / 1000, 2), "km", "je Richtung"),
           kpi_html("Höhe", ("+" if P["dh"] >= 0 else "−") + de(abs(P["dh"])), "m"),
           kpi_html("Flugzeit", de(R["drohne"]["umlauf_min"]), "min", "je Umlauf")])
+
+# ---------- Wetter ----------
+st.write("")
+wetter_view.anzeigen(R)
 
 # ---------- Flugprofil ----------
 st.write("")

@@ -131,3 +131,15 @@ iframe { border-radius: 10px; }
 .lp-calc-desc { color: #6B6B6B; font-size: .88rem; margin-bottom: 10px; }
 .lp-group-title { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 700; font-size: 1.25rem; color: #1F1F1F; }
 .lp-group-desc { color: #6B6B6B; font-size: .86rem; margin-bottom: 6px; }
+/* ---------- Wetter ---------- */
+.lp-wx { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.lp-wx-day { background: #FFFFFF; border: 1px solid #E6E6E6; border-top: 4px solid #A8A8A8; border-radius: 8px; padding: 8px 10px; font-size: .8rem; color: #2B2B2B; }
+.lp-wx-day.grün { border-top-color: #2F7A3E; }
+.lp-wx-day.gelb { border-top-color: #E0A100; }
+.lp-wx-day.rot { border-top-color: #C62828; }
+.lp-wx-day.sel { box-shadow: 0 0 0 2px #FF6600; }
+.lp-wx-day .d { font-weight: 700; color: #1F1F1F; }
+.lp-wx-day .i { font-size: 1.5rem; line-height: 1.4; }
+.lp-wx-day .t { font-weight: 700; }
+.lp-wx-day .m { color: #6B6B6B; }
+.lp-wx-legend span { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 12px; vertical-align: middle; }

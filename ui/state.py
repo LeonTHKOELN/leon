@@ -10,7 +10,7 @@ import re
 import streamlit as st
 
 from core import anbieter as anb
-from core import geo, heu, hoehe, modell, profil
+from core import geo, heu, hoehe, modell, profil, wetter
 from core import params as registry
 from core.fmt import de as de_
 
@@ -179,6 +179,20 @@ KEIN_ANBIETER = {"anbieter": {"id": "", "name": "Kein Anbieter hinterlegt", "typ
                  "km": 0.0, "route_min": 0.0, "geometry": [], "quelle": "keine Anreise", "luft_km": 0.0,
                  "snap_m": 0.0}
 KEINE_BASIS = {"anbieter": {"id": "", "name": "Keine Heli-Basis hinterlegt", "typ": "Helikopter"}, "km": 0.0}
+
+
+@st.cache_data(ttl=3600, show_spinner="Wettervorhersage wird geladen …")
+def _wetter(lat: float, lon: float, hoehe: int):
+    return wetter.fetch(lat, lon, hoehe)
+
+
+def wetter_laden(punkt, hoehe):
+    """Vorhersage am Einsatzort (Koordinaten gerundet, damit kleine Verschiebungen den Cache nutzen)."""
+    try:
+        tage, _ = _wetter(round(punkt[0], 3), round(punkt[1], 3), int(round(hoehe)))
+        return tage, ""
+    except Exception as e:  # noqa: BLE001
+        return None, str(e)
 
 
 def params() -> dict:

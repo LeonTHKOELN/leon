@@ -344,3 +344,10 @@ def test_erntefenster_leer_bei_regen():
     p = registry.defaults(REG)
     tage = [_tag(f"2026-07-0{i}", regen=3) for i in range(1, 6)]
     assert wetter.erntefenster(tage, p, 1) == []
+
+
+def test_flugfenster_stunden():
+    p = registry.defaults(REG)
+    std = [{"stunde": h, "wind_hoehe": 15 if 11 <= h <= 14 else 4, "boe": 6, "wind10": 3, "regen_mm": 0,
+            "regen_pct": 5, "temp": 8, "code": 1} for h in range(24)]
+    assert wetter.flugfenster(std, p) == [(6, 11), (15, 21)]

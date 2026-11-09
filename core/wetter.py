@@ -20,7 +20,9 @@ WMO = {  # Wettercode → (Symbol, Text)
 }
 DAILY = ["weather_code", "temperature_2m_max", "temperature_2m_min", "precipitation_sum",
          "precipitation_probability_max", "wind_speed_10m_max", "wind_gusts_10m_max", "sunshine_duration"]
-HOURLY = ["wind_speed_80m", "wind_speed_120m"]
+HOURLY = ["wind_speed_80m", "wind_speed_120m", "wind_gusts_10m", "wind_speed_10m", "precipitation",
+          "precipitation_probability", "temperature_2m", "weather_code"]
+HOEHENWIND = ["wind_speed_80m", "wind_speed_120m"]
 
 
 def fetch(lat, lon, hoehe_m=None, tage=16, arbeitszeit=(7, 19)):
@@ -34,15 +36,23 @@ def fetch(lat, lon, hoehe_m=None, tage=16, arbeitszeit=(7, 19)):
     r.raise_for_status()
     js = r.json()
     d, h = js["daily"], js.get("hourly", {})
-    # Wind in Flughöhe: Maximum je Tag im Arbeitszeitraum über 80 m und 120 m
-    hoehenwind = {}
+    # Stundenwerte je Tag; Wind in Flughöhe = Maximum aus 80 m und 120 m
+    hoehenwind, stunden = {}, {}
+
+    def hv(k, i):
+        arr = h.get(k)
+        return arr[i] if arr and i < len(arr) else None
+
     for i, t in enumerate(h.get("time", [])):
         tag, stunde = t[:10], int(t[11:13])
-        if not arbeitszeit[0] <= stunde <= arbeitszeit[1]:
-            continue
-        werte = [h[v][i] for v in HOURLY if h.get(v) and h[v][i] is not None]
-        if werte:
-            hoehenwind[tag] = max(hoehenwind.get(tag, 0), max(werte))
+        wh = [hv(v, i) for v in HOEHENWIND if hv(v, i) is not None]
+        stunden.setdefault(tag, []).append({
+            "stunde": stunde, "wind_hoehe": max(wh) if wh else None, "boe": hv("wind_gusts_10m", i),
+            "wind10": hv("wind_speed_10m", i), "regen_mm": hv("precipitation", i),
+            "regen_pct": hv("precipitation_probability", i), "temp": hv("temperature_2m", i),
+            "code": hv("weather_code", i)})
+        if wh and arbeitszeit[0] <= stunde <= arbeitszeit[1]:
+            hoehenwind[tag] = max(hoehenwind.get(tag, 0), max(wh))
     out = []
     for i, tag in enumerate(d["time"]):
         def g(k):
@@ -53,7 +63,7 @@ def fetch(lat, lon, hoehe_m=None, tage=16, arbeitszeit=(7, 19)):
                     "tmin": g("temperature_2m_min"), "regen_mm": g("precipitation_sum"),
                     "regen_pct": g("precipitation_probability_max"), "wind10": g("wind_speed_10m_max"),
                     "boe": g("wind_gusts_10m_max"), "wind_hoehe": hoehenwind.get(tag),
-                    "sonne_h": sonne / 3600 if sonne is not None else None})
+                    "sonne_h": sonne / 3600 if sonne is not None else None, "stunden": stunden.get(tag, [])})
     return out, js.get("elevation")
 
 
@@ -83,6 +93,36 @@ def flugampel(t, p):
     if rot:
         return "rot", rot + gelb
     return ("gelb", gelb) if gelb else ("grün", [])
+
+
+def stunden_ampel(h, p):
+    """Ampel für eine einzelne Stunde (gleiche Grenzwerte wie für den Tag, Regen je Stunde > 0,2 mm = nass)."""
+    wind = h["wind_hoehe"] if h["wind_hoehe"] is not None else h["wind10"]
+    if (h["boe"] is not None and h["boe"] > p["wetter.boe_max_ms"]) or \
+            (wind is not None and wind > p["wetter.wind_max_ms"]) or \
+            (h["regen_mm"] is not None and h["regen_mm"] > 0.2) or \
+            (h["temp"] is not None and h["temp"] < p["wetter.temp_min_c"]) or h["code"] in (95, 96, 99):
+        return "rot"
+    if (h["boe"] is not None and h["boe"] > 0.8 * p["wetter.boe_max_ms"]) or \
+            (wind is not None and wind > 0.8 * p["wetter.wind_max_ms"]) or \
+            (h["regen_pct"] is not None and h["regen_pct"] >= 50):
+        return "gelb"
+    return "grün"
+
+
+def flugfenster(stunden, p, von=6, bis=20):
+    """Zusammenhängende Zeitfenster ohne rote Stunden im Arbeitszeitraum, z. B. [(7, 13), (16, 19)]."""
+    fenster, start = [], None
+    for h in sorted((x for x in stunden if von <= x["stunde"] <= bis), key=lambda x: x["stunde"]):
+        ok = stunden_ampel(h, p) != "rot"
+        if ok and start is None:
+            start = h["stunde"]
+        if not ok and start is not None:
+            fenster.append((start, h["stunde"]))
+            start = None
+    if start is not None:
+        fenster.append((start, bis + 1))
+    return fenster
 
 
 def trocken(t, p):
